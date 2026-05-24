@@ -1,22 +1,20 @@
-import pandas as pd
-import matplotlib.pyplot as plt
+import pandas as pd #used pandas to manage my table
+import matplotlib.pyplot as plt 
 
-# Load historical tide gauge data
-df = pd.read_csv('../data/venice_data.txt', sep=';', header=None)
-df.columns = ['year', 'sea_level_mm', 'flag', 'quality']
+graph = pd.read_csv('data/venice data - historical.txt', sep=';', header=None)
+graph.columns = ['year', 'sea_level_mm', 'flag', 'quality'] #providing the headers here
 
-# Clean missing values
-df = df[df['sea_level_mm'] != -99999]
+graph = graph[graph['sea_level_mm'] != -99999] #apparently psmsl displays missing values using this specific notation.
+# now obviously missing values are not relevant, so I lowkey just exclude them. 
 
-# Convert mm to cm
-df['sea_level_cm'] = df['sea_level_mm'] / 10
+graph['sea_level_cm'] = graph['sea_level_mm'] / 10 #Tbh it's easier to read it this way
 
 # Quick check
-print(df.head())
-print(f"Data from {df['year'].min()} to {df['year'].max()}")
+print(graph.head())
+print(f"Data from {graph['year'].min()} to {graph['year'].max()}")
 
 # Plot it
-plt.plot(df['year'], df['sea_level_cm'])
+plt.plot(graph['year'], graph['sea_level_cm'])
 plt.title('Venice Sea Level 1909-2000')
 plt.xlabel('Year')
 plt.ylabel('Sea Level (cm)')
