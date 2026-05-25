@@ -1,127 +1,91 @@
 import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-import numpy as np
+
+st.set_page_config(
+    page_title="FloodCast Venice",
+    layout="wide"
+)
+
+# -------------------------
+# TITLE
+# -------------------------
 st.title("🌊 FloodCast Venice - Water you thinking?")
-st.subheader("Sea Level Prediction & Climate Scenario Dashboard")
 
-# -----------------------------
-# LOAD HISTORICAL DATA
-# -----------------------------
-graph = pd.read_csv(
-    'data/venice data - historical.txt',
-    sep=';',
-    header=None
+st.subheader(
+    "Interactive Sea Level Prediction & Climate Risk Dashboard"
 )
 
-graph.columns = ['year', 'sea_level_mm', 'flag', 'quality']
+# -------------------------
+# INTRODUCTION
+# -------------------------
+st.markdown("""
+Venice is one of the most flood-prone cities in the world due to
+rising sea levels, land subsidence, and climate change.
 
-graph = graph[graph['sea_level_mm'] != -99999]
+FloodCast Venice - Water you thinking? is an interactive decision-support dashboard
+designed to analyse historical sea level trends and compare future
+flooding risks under different climate scenarios.
 
-graph['sea_level_cm'] = graph['sea_level_mm'] / 10
+This application aim to raise awareness about the growing issue within Venice and is intended to support urban planners,
+government authorities, and civil protection agencies in
+understanding long-term flood risks and infrastructure challenges. Furthermore, it could also be used by tourists, should they choose to travel.
+""")
 
-# -----------------------------
-# MACHINE LEARNING MODEL
-# -----------------------------
-X = graph[['year']]
-y = graph['sea_level_cm']
+# -------------------------
+# IMAGES
+# -------------------------
+col1, col2, col3 = st.columns(3)
 
-model = LinearRegression()
-model.fit(X, y)
-
-# Historical trend
-hist_trend = model.predict(X)
-
-# Future prediction
-future_years = pd.DataFrame(
-    np.arange(graph['year'].max() + 1, 2101),
-    columns=['year']
-)
-
-predicted_levels = model.predict(future_years)
-
-# -----------------------------
-# SIDEBAR CONTROLS
-# -----------------------------
-st.sidebar.header("Graph Controls")
-
-show_historical = st.sidebar.checkbox(
-    "Show Historical Data",
-    value=True
-)
-
-show_regression = st.sidebar.checkbox(
-    "Show Regression Prediction",
-    value=True
-)
-
-show_uncertainty = st.sidebar.checkbox(
-    "Show Uncertainty Range",
-    value=True
-)
-
-# -----------------------------
-# CREATE GRAPH
-# -----------------------------
-fig, ax = plt.subplots(figsize=(10, 5))
-
-# Historical Data
-if show_historical:
-    ax.plot(
-        graph['year'],
-        graph['sea_level_cm'],
-        label='Historical Data'
+with col1:
+    st.image(
+        "https://upload.wikimedia.org/wikipedia/commons/6/6f/Venice_flood.jpg",
+        caption="Flooding in Venice"
     )
 
-# Historical Trend
-ax.plot(
-    graph['year'],
-    hist_trend,
-    linewidth=2,
-    label='Historical Trend'
-)
-
-# Future Prediction
-if show_regression:
-    ax.plot(
-        future_years,
-        predicted_levels,
-        linestyle='--',
-        linewidth=2,
-        label='Regression Prediction'
+with col2:
+    st.image(
+        "https://upload.wikimedia.org/wikipedia/commons/0/0d/Venice_Grand_Canal.jpg",
+        caption="Venice Grand Canal"
     )
 
-# Uncertainty Range
-if show_uncertainty:
-
-    uncertainty = np.array([
-        (year - 2000) * 0.05
-        for year in range(
-            int(future_years.min()),
-            2101
-        )
-    ])
-
-    upper_bound = predicted_levels.flatten() + uncertainty
-    lower_bound = predicted_levels.flatten() - uncertainty
-
-    ax.fill_between(
-        future_years.flatten(),
-        lower_bound,
-        upper_bound,
-        alpha=0.2,
-        label='Uncertainty Range'
+with col3:
+    st.image(
+        "https://upload.wikimedia.org/wikipedia/commons/a/a4/Venice_acqua_alta.jpg",
+        caption="Acqua Alta Events"
     )
 
-# Labels
-ax.set_title('Venice Sea Level Prediction')
-ax.set_xlabel('Year')
-ax.set_ylabel('Sea Level (cm)')
+# -------------------------
+# NAVIGATION SECTION
+# -------------------------
+st.markdown("---")
 
-ax.legend()
+st.header("📊 Explore the Analysis")
 
-# -----------------------------
-# DISPLAY GRAPH
-# -----------------------------
-st.pyplot(fig)
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.info("""
+    ### Historical Analysis
+
+    Explore historical tide gauge measurements and
+    regression-based future predictions.
+    """)
+
+with col2:
+    st.warning("""
+    ### Climate Scenarios
+
+    Analyse future sea level rise under
+    different RCP climate pathways.
+    """)
+
+with col3:
+    st.success("""
+    ### Comparative Dashboard
+
+    Compare historical trends, regression predictions,
+    and climate scenarios side-by-side.
+    """)
+
+st.markdown("""
+Use the sidebar on the left to navigate between pages.
+""")
