@@ -19,7 +19,7 @@ future_years = np.arange(2000, 2101).reshape(-1, 1)
 predicted_levels = model.predict(future_years) #predicting for future years
 
 #obviously there is always an uncertainty range
-uncertainty = np.array([(y - 2000) * 0.05 for y in range(2000, 2101)])
+uncertainty = np.array([(i - 2000) * 0.05 for i in range(2000, 2101)])
 upper_bound = predicted_levels.flatten() + uncertainty
 lower_bound = predicted_levels.flatten() - uncertainty
 
