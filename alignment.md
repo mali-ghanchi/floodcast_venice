@@ -4,7 +4,7 @@
 - Muhammad Ali Ghanchi
 
 ## Purpose
-This document verifies that the FloodCast Venice project meets all requirements outlined in the AP Examination Requirements by Prof. Dr.-Ing. Tobias Miunske.
+This document verifies that the FloodCast Venice project meets all requirements outlined in the AP Examination Requirements.
 
 ## Requirement Checklist
 
