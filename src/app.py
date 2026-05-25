@@ -8,10 +8,10 @@ st.set_page_config(
 # -------------------------
 # TITLE
 # -------------------------
-st.title("🌊 FloodCast Venice - Water you thinking?")
+st.title("FloodCast Venice - Water you thinking? 💦")
 
 st.subheader(
-    "Interactive Sea Level Prediction & Climate Risk Dashboard"
+    "About the city"
 )
 
 # -------------------------
@@ -37,20 +37,20 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/6/6f/Venice_flood.jpg",
+        "assets/venice flood.jpg",
         caption="Flooding in Venice"
     )
 
 with col2:
     st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/0/0d/Venice_Grand_Canal.jpg",
+        "assets/venice.jpg",
         caption="Venice Grand Canal"
     )
 
 with col3:
     st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/a/a4/Venice_acqua_alta.jpg",
-        caption="Acqua Alta Events"
+        "assets/aqua alta.jpg",
+        caption="Acqua Alta"
     )
 
 # -------------------------
