@@ -25,7 +25,7 @@ FloodCast Venice - Water you thinking? is an interactive decision-support dashbo
 designed to analyse historical sea level trends and compare future
 flooding risks under different climate scenarios.
 
-This application aim to raise awareness about the growing issue within Venice and is intended to support urban planners,
+We are here to raise awareness about the growing issue within Venice and intend to support urban planners,
 government authorities, and civil protection agencies in
 understanding long-term flood risks and infrastructure challenges. Furthermore, it could also be used by tourists, should they choose to travel.
 """)
@@ -62,30 +62,56 @@ st.header("📊 Explore the Analysis")
 
 col1, col2, col3 = st.columns(3)
 
+# -------------------------
+# HISTORICAL ANALYSIS
+# -------------------------
 with col1:
-    st.info("""
-    ### Historical Analysis
 
+    st.subheader("📈 Historical Analysis")
+
+    st.write("""
     Explore historical tide gauge measurements and
     regression-based future predictions.
     """)
 
-with col2:
-    st.warning("""
-    ### Climate Scenarios
+    st.page_link(
+        "pages/historical_analysis.py",
+        label="Open Historical Analysis",
+        icon="📈"
+    )
 
+# -------------------------
+# CLIMATE SCENARIOS
+# -------------------------
+with col2:
+
+    st.subheader("🌍 Climate Scenarios")
+
+    st.write("""
     Analyse future sea level rise under
     different RCP climate pathways.
     """)
 
-with col3:
-    st.success("""
-    ### Comparative Dashboard
+    st.page_link(
+        "pages/climate_scenarios.py",
+        label="Open Climate Scenarios",
+        icon="🌍"
+    )
 
+# -------------------------
+# COMPARISON DASHBOARD
+# -------------------------
+with col3:
+
+    st.subheader("⚖️ Comparative Dashboard")
+
+    st.write("""
     Compare historical trends, regression predictions,
     and climate scenarios side-by-side.
     """)
 
-st.markdown("""
-Use the sidebar on the left to navigate between pages.
-""")
+    st.page_link(
+        "pages/comparison_dashboard.py",
+        label="Open Comparative Dashboard",
+        icon="⚖️"
+    )
