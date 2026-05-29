@@ -96,12 +96,30 @@ predicted_levels = model.predict(
     future_years
 )
 # -----------------------------------
-# FUTURE PREDICTION BUTTON
+# SESSION STATE
 # -----------------------------------
 
-show_future = st.button(
-    "📈 Explore Future Prediction"
-)
+if "show_future" not in st.session_state:
+    st.session_state.show_future = False
+
+# -----------------------------------
+# BUTTONS
+# -----------------------------------
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    if st.button("📈 Explore Future Prediction"):
+        st.session_state.show_future = True
+
+with col2:
+
+    if st.button("📉 Return to Historical"):
+        st.session_state.show_future = False
+
+# Store current mode
+show_future = st.session_state.show_future
 
 
 # -----------------------------------
