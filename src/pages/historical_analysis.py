@@ -92,32 +92,28 @@ predicted_levels = model.predict(
     future_years
 )
 
+predicted_levels = model.predict(
+    future_years
+)
 # -----------------------------------
-# USER CONTROLS
+# FUTURE PREDICTION BUTTON
 # -----------------------------------
-st.sidebar.header("Graph Controls")
 
-show_trend = st.sidebar.checkbox(
-    "Show Historical Trend",
-    value=True
+show_future = st.button(
+    "📈 Explore Future Prediction"
 )
 
-show_prediction = st.sidebar.checkbox(
-    "Show Future Prediction",
-    value=True
-)
-
-show_uncertainty = st.sidebar.checkbox(
-    "Show Uncertainty Range",
-    value=True
-)
 
 # -----------------------------------
 # CREATE PLOTLY FIGURE
 # -----------------------------------
+
 fig = go.Figure()
 
-# Historical raw data
+# -----------------------------------
+# ALWAYS SHOW HISTORICAL DATA
+# -----------------------------------
+
 fig.add_trace(
     go.Scatter(
         x=graph['year'],
@@ -127,9 +123,14 @@ fig.add_trace(
     )
 )
 
-# Historical trend line
-if show_trend:
+# -----------------------------------
+# SHOW FUTURE ELEMENTS ONLY
+# AFTER BUTTON CLICK
+# -----------------------------------
 
+if show_future:
+
+    # Historical trend line
     fig.add_trace(
         go.Scatter(
             x=graph['year'],
@@ -139,9 +140,7 @@ if show_trend:
         )
     )
 
-# Future prediction
-if show_prediction:
-
+    # Future prediction
     fig.add_trace(
         go.Scatter(
             x=future_years.flatten(),
@@ -152,11 +151,9 @@ if show_prediction:
         )
     )
 
-# Uncertainty range
-if show_uncertainty:
-
+    # Uncertainty range
     uncertainty = np.array([
-        (year - 2000) * 0.05
+        ((year - 2000) ** 1.1) * 0.08
         for year in future_years.flatten()
     ])
 
@@ -171,24 +168,25 @@ if show_uncertainty:
     )
 
     fig.add_trace(
-    go.Scatter(
-        x=np.concatenate([
-            future_years.flatten(),
-            future_years.flatten()[::-1]
-        ]),
-        y=np.concatenate([
-            upper_bound,
-            lower_bound[::-1]
-        ]),
-        fill='toself',
-        name='Uncertainty Range',
-        hoverinfo='skip'
+        go.Scatter(
+            x=np.concatenate([
+                future_years.flatten(),
+                future_years.flatten()[::-1]
+            ]),
+            y=np.concatenate([
+                upper_bound,
+                lower_bound[::-1]
+            ]),
+            fill='toself',
+            name='Uncertainty Range',
+            hoverinfo='skip'
+        )
     )
-)
 
 # -----------------------------------
 # LAYOUT SETTINGS
 # -----------------------------------
+
 fig.update_layout(
     title='Venice Sea Level Analysis',
     xaxis_title='Year',
@@ -199,21 +197,40 @@ fig.update_layout(
 # -----------------------------------
 # DISPLAY GRAPH
 # -----------------------------------
+
 st.plotly_chart(
     fig,
     use_container_width=True
 )
 
 # -----------------------------------
-# SUMMARY TEXT
+# INTERPRETATION
 # -----------------------------------
+
 st.markdown("""
-### Interpretation
+### Historical Interpretation
 
 The historical tide gauge data indicates a long-term increase
-in relative sea level in Venice.
+in relative sea level in Venice over the observed period.
 
-The regression model extends this trend into the future and
-provides a simplified estimate of possible future developments
-under the assumption that current historical patterns continue.
+This gradual rise contributes to an increased flooding risk,
+especially during seasonal high-tide events such as
+*Acqua Alta*.
 """)
+
+# -----------------------------------
+# FUTURE INTERPRETATION
+# -----------------------------------
+
+if show_future:
+
+    st.markdown("""
+    ### Future Projection
+
+    The regression model extends historical trends into the future
+    and suggests that sea levels may continue rising throughout
+    the 21st century if current patterns persist.
+
+    The uncertainty range widens over time, reflecting the growing
+    unpredictability of long-term climate and environmental systems.
+    """)
