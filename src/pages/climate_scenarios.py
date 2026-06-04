@@ -1,159 +1,185 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error
 import plotly.graph_objects as go
 
 # -----------------------------------
-# PAGE TITLE
+# PAGE CONFIG
 # -----------------------------------
-
-st.title("🌍 Climate Scenarios")
+st.title("🌍 Climate-Driven Sea Level Prediction")
 
 st.markdown("""
-This section explores possible future sea level developments
-under different climate emission pathways.
-
-The projections shown below are based on published climate
-scenario data and illustrate how different greenhouse gas
-emission trajectories may influence future sea level rise.
+This page uses **global temperature and CO₂** together with time
+to predict **relative sea level in Venice**, and extrapolates this
+relationship into the future.
 """)
 
-# -----------------------------------
-# LOAD DATA
-# -----------------------------------
+# ===================================
+# 1. LOAD DATA
+# ===================================
 
-df = pd.read_excel(
-    "data/venice_sea_level comparison.xlsx"
-)
+# --- Venice tide gauge ---
+sea = pd.read_csv('data/venice data - historical.txt', sep=';', header=None)
+sea.columns = ['year', 'sea_level_mm', 'flag', 'quality']
+sea = sea[sea['sea_level_mm'] != -99999]
+sea['sea_level_cm'] = sea['sea_level_mm'] / 10
+sea = sea[['year', 'sea_level_cm']]
 
-years = df["Unnamed: 1"]
+# --- Global temperature: GLB.Ts+dSST.csv ---
+# col 0 = Year, col 13 ≈ annual mean anomaly
+temp_raw = pd.read_csv('data/GLB.Ts+dSST.csv', header=None, sep=',')
 
-# Convert metres -> centimetres
-rcp26 = df["rcp2.6_95"] * 100
+temp = temp_raw[[0, 13]].copy()
+temp.columns = ['year', 'temp_anomaly']
+temp['temp_anomaly'] = pd.to_numeric(temp['temp_anomaly'], errors='coerce')
+temp = temp.dropna(subset=['temp_anomaly'])
 
-rcp85 = df["rcp8.5_50"] * 100
+# --- CO₂: co2_annmean_mlo.csv ---
+# col 0 = year, col 1 = annual mean ppm
+co2_raw = pd.read_csv('data/co2_annmean_mlo.csv', header=None, sep=',')
 
-high_end = df["high-end"] * 100
+co2 = co2_raw[[0, 1]].copy()
+co2.columns = ['year', 'co2_ppm']
+co2['co2_ppm'] = pd.to_numeric(co2['co2_ppm'], errors='coerce')
+co2 = co2.dropna(subset=['co2_ppm'])
 
-# -----------------------------------
-# METRIC CARDS
-# -----------------------------------
+# ===================================
+# 2. MERGE DATASETS
+# ===================================
 
-col1, col2, col3 = st.columns(3)
+df = sea.merge(temp, on='year', how='inner')
+df = df.merge(co2, on='year', how='inner')
 
-with col1:
-    st.metric(
-        label="Best Case",
-        value="RCP 2.6"
-    )
+year_min = int(df['year'].min())
+year_max = int(df['year'].max())
+st.markdown(f"**Merged dataset years:** {year_min}–{year_max}")
 
-with col2:
-    st.metric(
-        label="Median Projection",
-        value="RCP 8.5"
-    )
+# ===================================
+# 3. TRAIN CLIMATE-DRIVEN MODEL
+# ===================================
 
-with col3:
-    st.metric(
-        label="Extreme Scenario",
-        value="High-End"
-    )
+feature_cols = ['year', 'temp_anomaly', 'co2_ppm']
+X = df[feature_cols]
+y = df['sea_level_cm']
 
-# -----------------------------------
-# SIDEBAR CONTROLS
-# -----------------------------------
+climate_model = LinearRegression()
+climate_model.fit(X, y)
 
-st.sidebar.header("Scenario Controls")
+# Historical predictions
+y_pred_hist = climate_model.predict(X)
 
-show_rcp26 = st.sidebar.checkbox(
-    "Show RCP 2.6",
-    value=True
-)
+mae = mean_absolute_error(y, y_pred_hist)
 
-show_rcp85 = st.sidebar.checkbox(
-    "Show RCP 8.5",
-    value=True
-)
+st.markdown(f"""
+### Historical Fit (Climate-Driven Model)
 
+- Features used: `year`, `temp_anomaly`, `co2_ppm`  
+- MAE (Mean Absolute Error): **{mae:.2f} cm**
+""")
 
-show_high_end = st.sidebar.checkbox(
-    "Show High-End Scenario",
-    value=True
-)
+# ===================================
+# 4. EXTRAPOLATE TEMP & CO₂ → 2100
+# ===================================
 
-# -----------------------------------
-# CREATE GRAPH
-# -----------------------------------
+st.markdown("### Future Extrapolation up to 2100")
+
+st.markdown("""
+We linearly extrapolate global **temperature** and **CO₂** trends over time,
+then feed these extrapolated values into the climate-driven model to obtain
+a possible future sea level trajectory for Venice.
+""")
+
+# Fit simple linear trends temp(year) and co2(year)
+temp_trend_model = LinearRegression()
+temp_trend_model.fit(df[['year']], df['temp_anomaly'])
+
+co2_trend_model = LinearRegression()
+co2_trend_model.fit(df[['year']], df['co2_ppm'])
+
+# Future years
+future_years = np.arange(year_max + 1, 2101)
+future_years_df = pd.DataFrame({'year': future_years})
+
+# Extrapolate temp and co2
+future_temp = temp_trend_model.predict(future_years_df[['year']])
+future_co2 = co2_trend_model.predict(future_years_df[['year']])
+
+future_features = pd.DataFrame({
+    'year': future_years,
+    'temp_anomaly': future_temp,
+    'co2_ppm': future_co2
+})
+
+# Climate-driven sea level prediction for future
+y_future_pred = climate_model.predict(future_features[feature_cols])
+
+# ===================================
+# 5. PLOT: HISTORICAL + FUTURE
+# ===================================
 
 fig = go.Figure()
 
-# RCP 2.6
-if show_rcp26:
-    fig.add_trace(
-        go.Scatter(
-            x=years,
-            y=rcp26,
-            mode="lines",
-            name="RCP 2.6"
-        )
-    )
+# Historical observed
+fig.add_trace(go.Scatter(
+    x=df['year'],
+    y=df['sea_level_cm'],
+    name='Venice Sea Level (Observed)',
+    mode='lines',
+    line=dict(color='steelblue', width=1.5)
+))
 
-# RCP 8.5 Median
-if show_rcp85:
-    fig.add_trace(
-        go.Scatter(
-            x=years,
-            y=rcp85,
-            mode="lines",
-            name="RCP 8.5"
-        )
-    )
+# Historical model fit
+fig.add_trace(go.Scatter(
+    x=df['year'],
+    y=y_pred_hist,
+    name='Model Fit (Climate-Driven, Historical)',
+    mode='lines',
+    line=dict(color='orange', dash='dash', width=2)
+))
 
-# High-End Scenario
-if show_high_end:
-    fig.add_trace(
-        go.Scatter(
-            x=years,
-            y=high_end,
-            mode="lines",
-            name="High-End Scenario"
-        )
-    )
-
-# -----------------------------------
-# GRAPH LAYOUT
-# -----------------------------------
+# Future extrapolated prediction
+fig.add_trace(go.Scatter(
+    x=future_years,
+    y=y_future_pred,
+    name='Climate-Driven Prediction (Extrapolated)',
+    mode='lines',
+    line=dict(color='purple', dash='dot', width=2)
+))
 
 fig.update_layout(
-    title="Projected Sea Level Rise Scenarios for Venice",
-    xaxis_title="Year",
-    yaxis_title="Relative Sea Level Rise (cm)",
-    hovermode="x unified"
+    title='Climate-Driven Regression: Past Fit and Future Extrapolation',
+    xaxis_title='Year',
+    yaxis_title='Sea Level (cm)',
+    hovermode='x unified'
 )
 
-# -----------------------------------
-# DISPLAY GRAPH
-# -----------------------------------
+st.plotly_chart(fig, use_container_width=True)
 
-st.plotly_chart(
-    fig,
-    use_container_width=True
-)
-
-# -----------------------------------
-# INTERPRETATION
-# -----------------------------------
+# ===================================
+# 6. INTERPRETATION
+# ===================================
 
 st.markdown("""
 ### Interpretation
 
-The graph illustrates possible future sea level developments
-under different climate pathways.
+This page shows a **climate-driven regression model** that uses:
 
-- **RCP 2.6** represents strong climate mitigation and lower emissions.
-- **RCP 8.5** represents a higher-emissions future.
-- **High-End Scenario** represents an extreme projection used for long-term risk assessment.
+- `year` (capturing long-term local effects like subsidence),
+- `temp_anomaly` (global temperature anomaly),
+- `co2_ppm` (global atmospheric CO₂),
 
-For Venice, higher sea levels increase the frequency and severity
-of flooding events, potentially affecting infrastructure, tourism,
-heritage sites, and residential areas.
+to predict **relative sea level in Venice**.
+
+We:
+
+1. Train the model on the historical overlap period.
+2. Fit simple linear trends for global temperature and CO₂ as functions of time.
+3. Extrapolate temperature and CO₂ up to the year 2100.
+4. Use the climate-driven model to compute a **future sea level trajectory** for Venice.
+
+The extrapolated curve is not a full physical climate model, but a
+**data-driven scenario** that links global climate trends to local flood risk
+in a way that can support discussions for urban planning and civil protection.
 """)
