@@ -11,9 +11,12 @@ import plotly.graph_objects as go
 st.title("🌍 Climate-Driven Sea Level Prediction")
 
 st.markdown("""
-This page uses **global temperature and CO₂** together with time
-to predict **relative sea level in Venice**, and extrapolates this
-relationship into the future.
+This page uses **global temperature and CO₂**, together with time,
+to predict **relative sea level in Venice**.
+
+We first fit a regression model on historical data.
+Optionally, you can explore a **future extrapolation** up to 2100,
+including a **statistical prediction interval** that widens with time.
 """)
 
 # ===================================
@@ -70,6 +73,16 @@ climate_model.fit(X, y)
 # Historical predictions
 y_pred_hist = climate_model.predict(X)
 
+# Residuals and residual std (noise level)
+residuals = y - y_pred_hist
+n_samples, n_features = X.shape
+dof = max(n_samples - (n_features + 1), 1)  # +1 for intercept
+s = np.sqrt(np.sum(residuals**2) / dof)
+
+# Design matrix with intercept for prediction interval
+X_design = np.column_stack([np.ones(len(X)), X.values])
+XtX_inv = np.linalg.inv(X_design.T @ X_design)
+
 mae = mean_absolute_error(y, y_pred_hist)
 
 st.markdown(f"""
@@ -80,43 +93,80 @@ st.markdown(f"""
 """)
 
 # ===================================
-# 4. EXTRAPOLATE TEMP & CO₂ → 2100
+# 4. BUTTONS: HISTORICAL vs FUTURE
 # ===================================
 
-st.markdown("### Future Extrapolation up to 2100")
+if "show_future_climate" not in st.session_state:
+    st.session_state.show_future_climate = False
 
-st.markdown("""
-We linearly extrapolate global **temperature** and **CO₂** trends over time,
-then feed these extrapolated values into the climate-driven model to obtain
-a possible future sea level trajectory for Venice.
-""")
+col_btn1, col_btn2 = st.columns(2)
 
-# Fit simple linear trends temp(year) and co2(year)
-temp_trend_model = LinearRegression()
-temp_trend_model.fit(df[['year']], df['temp_anomaly'])
+with col_btn1:
+    if st.button("📈 Explore Future Prediction"):
+        st.session_state.show_future_climate = True
 
-co2_trend_model = LinearRegression()
-co2_trend_model.fit(df[['year']], df['co2_ppm'])
+with col_btn2:
+    if st.button("📉 Return to Historical"):
+        st.session_state.show_future_climate = False
 
-# Future years
-future_years = np.arange(year_max + 1, 2101)
-future_years_df = pd.DataFrame({'year': future_years})
-
-# Extrapolate temp and co2
-future_temp = temp_trend_model.predict(future_years_df[['year']])
-future_co2 = co2_trend_model.predict(future_years_df[['year']])
-
-future_features = pd.DataFrame({
-    'year': future_years,
-    'temp_anomaly': future_temp,
-    'co2_ppm': future_co2
-})
-
-# Climate-driven sea level prediction for future
-y_future_pred = climate_model.predict(future_features[feature_cols])
+show_future = st.session_state.show_future_climate
 
 # ===================================
-# 5. PLOT: HISTORICAL + FUTURE
+# 5. EXTRAPOLATION TO 2100 (ONLY IF ENABLED)
+# ===================================
+
+if show_future:
+    # Fit simple linear trends temp(year) and co2(year)
+    temp_trend_model = LinearRegression()
+    temp_trend_model.fit(df[['year']], df['temp_anomaly'])
+
+    co2_trend_model = LinearRegression()
+    co2_trend_model.fit(df[['year']], df['co2_ppm'])
+
+    # Future years: include the last historical year so curves connect
+    future_years = np.arange(year_max, 2101)
+    future_years_df = pd.DataFrame({'year': future_years})
+
+    # Extrapolate temp and CO₂
+    future_temp = temp_trend_model.predict(future_years_df[['year']])
+    future_co2 = co2_trend_model.predict(future_years_df[['year']])
+
+    future_features = pd.DataFrame({
+        'year': future_years,
+        'temp_anomaly': future_temp,
+        'co2_ppm': future_co2
+    })
+
+    # Climate-driven sea level prediction for future
+    X_future = future_features[feature_cols].values
+    y_future_pred = climate_model.predict(future_features[feature_cols])
+
+    # --- REAL prediction interval based on linear regression ---
+    # Build design matrix for future (with intercept)
+    X_future_design = np.column_stack([np.ones(len(X_future)), X_future])
+
+    # For each future point, compute prediction std:
+    # std_pred(x0) = s * sqrt(1 + x0^T (X^T X)^(-1) x0)
+    pred_var = []
+    for x0 in X_future_design:
+        v = x0 @ XtX_inv @ x0.T
+        pred_var.append(1.0 + v)
+
+    pred_var = np.array(pred_var)
+    std_pred = s * np.sqrt(pred_var)
+
+    z = 1.96  # ~95% prediction interval
+    upper_bound = y_future_pred + z * std_pred
+    lower_bound = y_future_pred - z * std_pred
+
+else:
+    future_years = None
+    y_future_pred = None
+    upper_bound = None
+    lower_bound = None
+
+# ===================================
+# 6. PLOT: HISTORICAL + OPTIONAL FUTURE + UNCERTAINTY
 # ===================================
 
 fig = go.Figure()
@@ -139,14 +189,27 @@ fig.add_trace(go.Scatter(
     line=dict(color='orange', dash='dash', width=2)
 ))
 
-# Future extrapolated prediction
-fig.add_trace(go.Scatter(
-    x=future_years,
-    y=y_future_pred,
-    name='Climate-Driven Prediction (Extrapolated)',
-    mode='lines',
-    line=dict(color='purple', dash='dot', width=2)
-))
+# Future extrapolated prediction + uncertainty
+if show_future and future_years is not None:
+    # Uncertainty band
+    fig.add_trace(go.Scatter(
+        x=np.concatenate([future_years, future_years[::-1]]),
+        y=np.concatenate([upper_bound, lower_bound[::-1]]),
+        fill='toself',
+        name='Prediction Interval (~95%)',
+        hoverinfo='skip',
+        line=dict(color='rgba(255, 0, 0, 0)'),
+        fillcolor='rgba(255, 0, 0, 0.2)'
+    ))
+
+    # Future prediction line
+    fig.add_trace(go.Scatter(
+        x=future_years,
+        y=y_future_pred,
+        name='Climate-Driven Prediction (Extrapolated)',
+        mode='lines',
+        line=dict(color='red', dash='dash', width=2)
+    ))
 
 fig.update_layout(
     title='Climate-Driven Regression: Past Fit and Future Extrapolation',
@@ -158,28 +221,27 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # ===================================
-# 6. INTERPRETATION
+# 7. INTERPRETATION
 # ===================================
 
 st.markdown("""
 ### Interpretation
 
-This page shows a **climate-driven regression model** that uses:
+- The **orange dashed line** is the **regression fit** learned from historical data:
+  it links `year`, `temp_anomaly`, and `co2_ppm` to **Venice sea level**.
 
-- `year` (capturing long-term local effects like subsidence),
-- `temp_anomaly` (global temperature anomaly),
-- `co2_ppm` (global atmospheric CO₂),
+- When you click **“Explore Future Prediction”**, the app:
+  1. Fits simple linear trends for global temperature and CO₂ over time.
+  2. Extrapolates these trends up to the year 2100.
+  3. Applies the **same regression model** to these future values.
 
-to predict **relative sea level in Venice**.
+- The **red dotted line** is the **extrapolated climate-driven prediction**.
+- The **red shaded area** is a **prediction interval (~95 %)** based on the
+  regression’s residual variance and the linear model structure.
+  It widens with time because predictions far beyond the training range
+  are statistically less certain.
 
-We:
-
-1. Train the model on the historical overlap period.
-2. Fit simple linear trends for global temperature and CO₂ as functions of time.
-3. Extrapolate temperature and CO₂ up to the year 2100.
-4. Use the climate-driven model to compute a **future sea level trajectory** for Venice.
-
-The extrapolated curve is not a full physical climate model, but a
-**data-driven scenario** that links global climate trends to local flood risk
-in a way that can support discussions for urban planning and civil protection.
+This gives you a **data-driven scenario curve with quantified uncertainty**
+that you can compare to other sea-level scenarios (e.g. RCP-based projections)
+in your overall decision-support dashboard.
 """)
