@@ -236,8 +236,8 @@ st.markdown("""
   3. Applies the **same regression model** to these future values.
 
 - The **red dotted line** is the **extrapolated climate-driven prediction**.
-- The **red shaded area** is a **prediction interval (~95 %)** based on the
-  regression’s residual variance and the linear model structure.
+- The **red shaded area** is a **prediction interval based on the
+  regression's residual variance and the linear model structure.
   It widens with time because predictions far beyond the training range
   are statistically less certain.
 
