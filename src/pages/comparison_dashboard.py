@@ -22,7 +22,7 @@ model = LinearRegression()
 model.fit(X, y)
 
 # Get the baseline (sea level at year 2000)
-baseline = float(model.predict(pd.DataFrame({'year': [2000]})))
+baseline = model.predict(pd.DataFrame({'year': [2000]}))
 
 # Predict 2000-2100
 future_years = pd.DataFrame({'year': np.arange(2000, 2101)})
@@ -31,7 +31,7 @@ predicted_levels = model.predict(future_years)
 # -----------------------------
 # LOAD RCP DATA
 # -----------------------------
-rcp = pd.read_excel('data/venice_sea_level_comparison.xlsx')
+rcp = pd.read_excel('data/venice_sea_level comparison.xlsx')
 rcp = rcp.rename(columns={'Unnamed: 1': 'year'})
 rcp = rcp[['year', 'rcp2.6_95', 'rcp8.5_50', 'high-end']].dropna()
 
