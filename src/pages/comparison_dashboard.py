@@ -2,103 +2,97 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
 import plotly.graph_objects as go
 
 # -----------------------------
 # LOAD HISTORICAL SEA LEVEL
 # -----------------------------
-sea = pd.read_csv(
-    'data/venice data - historical.txt',
-    sep=';', header=None
-)
+sea = pd.read_csv('data/venice data - historical.txt', sep=';', header=None)
 sea.columns = ['year', 'sea_level_mm', 'flag', 'quality']
 sea = sea[sea['sea_level_mm'] != -99999]
 sea['sea_level_cm'] = sea['sea_level_mm'] / 10
 sea = sea[['year', 'sea_level_cm']]
 
 # -----------------------------
-# LOAD CO2 DATA
+# TRAIN LINEAR REGRESSION
 # -----------------------------
-co2 = pd.read_csv('data/co2_annmean_mlo.csv', comment='#', header=None)
-co2.columns = ['year', 'co2_ppm', 'uncertainty']
-co2 = co2[['year', 'co2_ppm']]
-
-# -----------------------------
-# LOAD TEMPERATURE DATA
-# -----------------------------
-temp = pd.read_csv('data/GLB.Ts+dSST.csv', skiprows=1)
-temp = temp.rename(columns={temp.columns[0]: 'year', temp.columns[-3]: 'annual_temp'})
-temp = temp[['year', 'annual_temp']]
-temp['year'] = pd.to_numeric(temp['year'], errors='coerce')
-temp['annual_temp'] = pd.to_numeric(temp['annual_temp'], errors='coerce')
-temp = temp.dropna()
-
-# -----------------------------
-# MERGE ALL THREE DATASETS
-# -----------------------------
-df = sea.merge(co2, on='year').merge(temp, on='year')
-
-st.markdown("### 🔬 Hybrid Model — Merged Dataset")
-st.write(f"Training on {len(df)} years of overlapping data ({int(df['year'].min())}–{int(df['year'].max())})")
-
-# -----------------------------
-# TRAIN HYBRID MODEL
-# -----------------------------
-X = df[['year', 'co2_ppm', 'annual_temp']]
-y = df['sea_level_cm']
-
+X = sea[['year']]
+y = sea['sea_level_cm']
 model = LinearRegression()
 model.fit(X, y)
 
-st.write(f"**Model R² Score:** {model.score(X, y):.4f}")
-st.write("*(R² closer to 1.0 = better fit)*")
+# Get the baseline (sea level at year 2000)
+baseline = float(model.predict(pd.DataFrame({'year': [2000]})))
+
+# Predict 2000-2100
+future_years = pd.DataFrame({'year': np.arange(2000, 2101)})
+predicted_levels = model.predict(future_years)
 
 # -----------------------------
-# FUTURE PREDICTIONS
+# LOAD RCP DATA
 # -----------------------------
-# For future years we need estimated CO2 and temp values
-# We use simple linear extrapolation for those too
-co2_model = LinearRegression()
-co2_model.fit(df[['year']], df['co2_ppm'])
+rcp = pd.read_excel('data/venice_sea_level_comparison.xlsx')
+rcp = rcp.rename(columns={'Unnamed: 1': 'year'})
+rcp = rcp[['year', 'rcp2.6_95', 'rcp8.5_50', 'high-end']].dropna()
 
-temp_model = LinearRegression()
-temp_model.fit(df[['year']], df['annual_temp'])
+# Convert metres to cm and add to baseline
+rcp['best_case_cm'] = baseline + (rcp['rcp2.6_95'] * 100)
+rcp['medium_cm'] = baseline + (rcp['rcp8.5_50'] * 100)
+rcp['worst_case_cm'] = baseline + (rcp['high-end'] * 100)
 
-future_years = np.arange(2001, 2101)
-future_co2 = co2_model.predict(future_years.reshape(-1, 1))
-future_temp = temp_model.predict(future_years.reshape(-1, 1))
-
-future_X = pd.DataFrame({
-    'year': future_years,
-    'co2_ppm': future_co2,
-    'annual_temp': future_temp
-})
-
-future_predictions = model.predict(future_X)
+# -----------------------------
+# PAGE TITLE
+# -----------------------------
+st.markdown("# ⚖️ Comparison Dashboard")
+st.markdown("Compare our linear regression prediction against RCP climate scenarios.")
 
 # -----------------------------
 # PLOT
 # -----------------------------
 fig = go.Figure()
 
+# Historical data
 fig.add_trace(go.Scatter(
-    x=df['year'], y=df['sea_level_cm'],
+    x=sea['year'], y=sea['sea_level_cm'],
     name='Historical Data',
-    line=dict(color='steelblue')
+    line=dict(color='steelblue', width=1.5),
+    opacity=0.6
 ))
 
+# Our prediction
 fig.add_trace(go.Scatter(
-    x=future_years, y=future_predictions,
-    name='Hybrid Model Prediction',
-    line=dict(color='red', dash='dash')
+    x=future_years['year'], y=predicted_levels,
+    name='Our Prediction',
+    line=dict(color='orange', dash='dash', width=2)
+))
+
+# RCP Best case
+fig.add_trace(go.Scatter(
+    x=rcp['year'], y=rcp['best_case_cm'],
+    name='Best Case (RCP 2.6)',
+    line=dict(color='green', dash='dot', width=2)
+))
+
+# RCP Medium
+fig.add_trace(go.Scatter(
+    x=rcp['year'], y=rcp['medium_cm'],
+    name='Medium Case (RCP 8.5 median)',
+    line=dict(color='goldenrod', dash='dot', width=2)
+))
+
+# RCP Worst case
+fig.add_trace(go.Scatter(
+    x=rcp['year'], y=rcp['worst_case_cm'],
+    name='Worst Case (High End)',
+    line=dict(color='red', dash='dot', width=2)
 ))
 
 fig.update_layout(
-    title='Venice Sea Level — Hybrid Model Prediction',
+    title='Venice Sea Level — Our Prediction vs Climate Scenarios',
     xaxis_title='Year',
     yaxis_title='Sea Level (cm)',
-    hovermode='x unified'
+    hovermode='x unified',
+    legend=dict(orientation='h', yanchor='bottom', y=-0.3)
 )
 
 st.plotly_chart(fig, use_container_width=True)
@@ -107,13 +101,12 @@ st.plotly_chart(fig, use_container_width=True)
 # EXPLANATION
 # -----------------------------
 st.markdown("""
-### How the Hybrid Model Works
-Unlike a simple linear regression that only uses time,
-this model uses **three inputs** simultaneously:
-- 📅 **Year** — captures the overall time trend
-- 🌫️ **CO2 levels (ppm)** — captures the effect of greenhouse gas emissions
-- 🌡️ **Global temperature anomaly** — captures the effect of warming oceans
+### What are we comparing?
+- 🟠 **Our Prediction** — linear regression trained on real Venice tide gauge data (1909–2000)
+- 🟢 **Best Case (RCP 2.6)** — humanity drastically cuts emissions
+- 🟡 **Medium Case (RCP 8.5 median)** — some action taken, moderate emissions
+- 🔴 **Worst Case (High End)** — business as usual, no action taken
 
-This is called **multivariate linear regression** and gives a more
-scientifically grounded prediction than time alone.
+The gap between our prediction and the worst case scenario represents the 
+**additional impact of accelerating climate change** that a simple linear trend cannot capture.
 """)
