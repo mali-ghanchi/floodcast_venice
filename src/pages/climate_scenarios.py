@@ -83,13 +83,16 @@ s = np.sqrt(np.sum(residuals**2) / dof)
 X_design = np.column_stack([np.ones(len(X)), X.values])
 XtX_inv = np.linalg.inv(X_design.T @ X_design)
 
+# Metrics
 mae = mean_absolute_error(y, y_pred_hist)
+rmse = np.sqrt(np.mean(residuals**2))
 
 st.markdown(f"""
 ### Historical Fit (Climate-Driven Model)
 
 - Features used: `year`, `temp_anomaly`, `co2_ppm`  
-- MAE (Mean Absolute Error): **{mae:.2f} cm**
+- MAE (Mean Absolute Error): **{mae:.2f} cm**  
+- RMSE (Root Mean Squared Error): **{rmse:.2f} cm**
 """)
 
 # ===================================
@@ -236,7 +239,7 @@ st.markdown("""
   3. Applies the **same regression model** to these future values.
 
 - The **red dotted line** is the **extrapolated climate-driven prediction**.
-- The **red shaded area** is a **prediction interval based on the
+- The **red shaded area** is a **prediction interval** based on the
   regression's residual variance and the linear model structure.
   It widens with time because predictions far beyond the training range
   are statistically less certain.
@@ -244,4 +247,38 @@ st.markdown("""
 This gives you a **data-driven scenario curve with quantified uncertainty**
 that you can compare to other sea-level scenarios (e.g. RCP-based projections)
 in your overall decision-support dashboard.
+""")
+
+# ===================================
+# 6b. RESIDUAL PLOT (MODEL EVALUATION)
+# ===================================
+
+st.markdown("### Residual analysis")
+
+fig_res = go.Figure()
+fig_res.add_trace(go.Scatter(
+    x=df['year'],
+    y=residuals,
+    mode="markers",
+    name="Residuals (Observed - Predicted)",
+    marker=dict(color="darkslategray", size=6)
+))
+
+fig_res.add_hline(y=0, line=dict(color="red", dash="dot"))
+
+fig_res.update_layout(
+    title="Residuals over time",
+    xaxis_title="Year",
+    yaxis_title="Residual (cm)",
+    hovermode="x"
+)
+
+st.plotly_chart(fig_res, use_container_width=True)
+
+st.markdown("""
+The residuals show how far the model predictions deviate from the observed
+sea level in each year. Values scattered around zero without a strong long-term
+trend indicate that the model captures the **overall mean relationship**
+reasonably well, while short-term variability and local processes remain
+unresolved.
 """)

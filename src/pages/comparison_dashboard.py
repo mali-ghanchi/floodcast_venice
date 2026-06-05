@@ -201,6 +201,61 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------
+# THRESHOLD ANALYSIS
+# -----------------------------
+
+st.markdown("### Threshold analysis")
+
+st.write(
+    "Select a critical threshold above the year 2000 sea level. "
+    "The table shows when each scenario first exceeds this level."
+)
+
+# Slider: threshold above year 2000 level
+threshold_cm = st.slider(
+    "Critical threshold above year 2000 level (cm)",
+    min_value=0,
+    max_value=100,
+    value=30,
+    step=5
+)
+
+# Absolute threshold in cm (relative to same reference as the curves)
+threshold_absolute = baseline + threshold_cm
+
+def first_year_crossing(years_array, values_array, threshold_value):
+    """Return first year where values >= threshold_value, or 'Not before 2100'."""
+    years_array = np.array(years_array)
+    values_array = np.array(values_array)
+    mask = values_array >= threshold_value
+    if not np.any(mask):
+        return "Not before 2100"
+    return int(years_array[mask][0])
+
+# Compute first exceedance year for each scenario
+year_our_pred = first_year_crossing(future_years_array, predicted_levels, threshold_absolute)
+year_rcp_26 = first_year_crossing(rcp['year'].values, rcp['best_case_cm'].values, threshold_absolute)
+year_rcp_85 = first_year_crossing(rcp['year'].values, rcp['medium_cm'].values, threshold_absolute)
+year_high_end = first_year_crossing(rcp['year'].values, rcp['worst_case_cm'].values, threshold_absolute)
+
+results_df = pd.DataFrame({
+    "Scenario": [
+        "Our Prediction (Climate-Driven)",
+        "RCP 2.6",
+        "RCP 8.5 (median)",
+        "High-end scenario"
+    ],
+    f"First year ≥ baseline + {threshold_cm} cm": [
+        year_our_pred,
+        year_rcp_26,
+        year_rcp_85,
+        year_high_end
+    ]
+})
+
+st.table(results_df)
+
+# -----------------------------
 # EXPLANATION
 # -----------------------------
 st.markdown("""
@@ -229,12 +284,8 @@ However, the **RCP-based scenarios** incorporate additional physical processes,
 especially accelerated ice-sheet melt, that can push global sea level — and thus
 relative sea level in Venice — **well above what a simple statistical model would predict**.
 
-This comparison suggests that:
-
-- **Local land subsidence and historical trends already put Venice at high risk**,  
-- but under **high-end climate scenarios**, global sea-level acceleration becomes a
-  dominant factor, bringing critical flood levels **decades earlier** than suggested by
-  a purely historical, climate-driven regression.
+The threshold table above shows how **high-end scenarios can reach critical levels
+decades earlier** than the pure climate-driven regression.
 
 For urban planners, this means that relying only on historical trends (even with CO₂
 and temperature included) is risky; adaptation strategies should be stress-tested
