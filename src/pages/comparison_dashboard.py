@@ -51,7 +51,20 @@ y = df['sea_level_cm']
 climate_model = LinearRegression()
 climate_model.fit(X, y)
 
-# Baseline: predicted sea level at year 2000
+# Historical predictions (for residuals)
+y_pred_hist = climate_model.predict(X)
+
+# Residuals and residual std
+residuals = y - y_pred_hist
+n_samples, n_features = X.shape
+dof = max(n_samples - (n_features + 1), 1)  # +1 for intercept
+s = np.sqrt(np.sum(residuals**2) / dof)
+
+# Design matrix with intercept for confidence band
+X_design = np.column_stack([np.ones(len(X)), X.values])
+XtX_inv = np.linalg.inv(X_design.T @ X_design)
+
+# Baseline: predicted sea level at year 2000 using climate-driven model
 row_2000 = df[df['year'] == 2000].iloc[0]
 baseline = climate_model.predict(
     [[row_2000['year'], row_2000['temp_anomaly'], row_2000['co2_ppm']]]
@@ -82,8 +95,23 @@ future_features = pd.DataFrame({
     'co2_ppm': future_co2
 })
 
-# Climate-driven sea level prediction for future
+X_future = future_features[feature_cols].values
 predicted_levels = climate_model.predict(future_features[feature_cols])
+
+# --- Regression-based confidence band (for mean prediction) ---
+X_future_design = np.column_stack([np.ones(len(X_future)), X_future])
+
+pred_var = []
+for x0 in X_future_design:
+    v = x0 @ XtX_inv @ x0.T  # variance of mean prediction
+    pred_var.append(v)
+
+pred_var = np.array(pred_var)
+std_pred = s * np.sqrt(pred_var)
+
+z = 1.64  # ~90% confidence interval (tighter visually)
+upper_bound = predicted_levels + z * std_pred
+lower_bound = predicted_levels - z * std_pred
 
 # -----------------------------
 # LOAD RCP DATA
@@ -114,6 +142,17 @@ fig.add_trace(go.Scatter(
     name='Historical Data (Tide Gauge)',
     line=dict(color='steelblue', width=1.5),
     opacity=0.6
+))
+
+# Uncertainty band for our prediction
+fig.add_trace(go.Scatter(
+    x=np.concatenate([future_years_array, future_years_array[::-1]]),
+    y=np.concatenate([upper_bound, lower_bound[::-1]]),
+    fill='toself',
+    name='Our Prediction Uncertainty (~90%)',
+    hoverinfo='skip',
+    line=dict(color='rgba(255, 165, 0, 0)'),  # transparent border
+    fillcolor='rgba(255, 165, 0, 0.2)'        # light orange
 ))
 
 # Our climate-driven prediction
@@ -161,14 +200,36 @@ st.markdown("""
 ### What are we comparing?
 
 - 🟠 **Our Prediction (Climate-Driven)**  
-  Multivariate regression trained on real Venice tide gauge data **plus**  
-  global temperature anomaly and CO₂ (`year`, `temp_anomaly`, `co2_ppm`).
+  Multivariate regression trained on real Venice tide gauge data **and**  
+  global temperature anomaly and CO₂.
 
-- 🟢 **Best Case (RCP 2.6)** — strong global mitigation.
-- 🟡 **Medium Case (RCP 8.5 median)** — high emissions, median sea-level response.
-- 🔴 **Worst Case (High End)** — high emissions and strong ice-sheet contribution.
+- 🟠 **Uncertainty Band**  
+  The shaded orange area is a **statistical confidence band** for the
+  mean prediction of our regression model.
 
-The gap between our climate-driven prediction and the worst-case scenario
-represents the **additional impact of accelerating global climate processes**
-that a simple statistical model trained on past data alone cannot fully capture.
+- 🟢 **RCP 2.6** — strong global mitigation, limited sea-level rise.  
+- 🟡 **RCP 8.5** — high emissions, median sea-level response.  
+- 🔴 **High End** — high emissions combined with strong ice-sheet response.
+
+### Interpretation for planners and authorities
+
+The **tide gauge record** already includes the combined effect of **global sea-level rise**
+and **local land subsidence** in Venice. Our climate-driven regression continues this
+historical relationship into the future, assuming that subsidence and the response to
+global warming remain similar to the past.
+
+However, the **RCP-based scenarios** incorporate additional physical processes,
+especially accelerated ice-sheet melt, that can push global sea level — and thus
+relative sea level in Venice — **well above what a simple statistical model would predict**.
+
+This comparison suggests that:
+
+- **Local land subsidence and historical trends already put Venice at high risk**,  
+- but under **high-end climate scenarios**, global sea-level acceleration becomes a
+  dominant factor, bringing critical flood levels **decades earlier** than suggested by
+  a purely historical, climate-driven regression.
+
+For urban planners, this means that relying only on historical trends (even with CO₂
+and temperature included) is risky; adaptation strategies should be stress-tested
+against the **medium and high-end RCP scenarios**.
 """)
