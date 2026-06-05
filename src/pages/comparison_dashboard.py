@@ -14,19 +14,76 @@ sea['sea_level_cm'] = sea['sea_level_mm'] / 10
 sea = sea[['year', 'sea_level_cm']]
 
 # -----------------------------
-# TRAIN LINEAR REGRESSION
+# LOAD GLOBAL TEMPERATURE
 # -----------------------------
-X = sea[['year']]
-y = sea['sea_level_cm']
-model = LinearRegression()
-model.fit(X, y)
+# GLB.Ts+dSST.csv: col 0 = Year, col 13 ≈ annual mean anomaly
+temp_raw = pd.read_csv('data/GLB.Ts+dSST.csv', header=None, sep=',')
 
-# Get the baseline (sea level at year 2000)
-baseline = model.predict(pd.DataFrame({'year': [2000]}))
+temp = temp_raw[[0, 13]].copy()
+temp.columns = ['year', 'temp_anomaly']
+temp['temp_anomaly'] = pd.to_numeric(temp['temp_anomaly'], errors='coerce')
+temp = temp.dropna(subset=['temp_anomaly'])
 
-# Predict 2000-2100
-future_years = pd.DataFrame({'year': np.arange(2000, 2101)})
-predicted_levels = model.predict(future_years)
+# -----------------------------
+# LOAD CO₂ DATA
+# -----------------------------
+# co2_annmean_mlo.csv: col 0 = year, col 1 = annual mean ppm
+co2_raw = pd.read_csv('data/co2_annmean_mlo.csv', header=None, sep=',')
+
+co2 = co2_raw[[0, 1]].copy()
+co2.columns = ['year', 'co2_ppm']
+co2['co2_ppm'] = pd.to_numeric(co2['co2_ppm'], errors='coerce')
+co2 = co2.dropna(subset=['co2_ppm'])
+
+# -----------------------------
+# MERGE DATASETS (SEA + TEMP + CO₂)
+# -----------------------------
+df = sea.merge(temp, on='year', how='inner')
+df = df.merge(co2, on='year', how='inner')
+
+# -----------------------------
+# TRAIN CLIMATE-DRIVEN REGRESSION
+# -----------------------------
+feature_cols = ['year', 'temp_anomaly', 'co2_ppm']
+X = df[feature_cols]
+y = df['sea_level_cm']
+
+climate_model = LinearRegression()
+climate_model.fit(X, y)
+
+# Baseline: predicted sea level at year 2000
+row_2000 = df[df['year'] == 2000].iloc[0]
+baseline = climate_model.predict(
+    [[row_2000['year'], row_2000['temp_anomaly'], row_2000['co2_ppm']]]
+)[0]
+
+# -----------------------------
+# FUTURE PREDICTION 2000–2100
+# -----------------------------
+
+# Fit linear trends for temp(year) and co2(year) on historical period
+temp_trend_model = LinearRegression()
+temp_trend_model.fit(df[['year']], df['temp_anomaly'])
+
+co2_trend_model = LinearRegression()
+co2_trend_model.fit(df[['year']], df['co2_ppm'])
+
+# Future years
+future_years_array = np.arange(2000, 2101)
+future_years = pd.DataFrame({'year': future_years_array})
+
+# Extrapolate future temp and CO₂
+future_temp = temp_trend_model.predict(future_years[['year']])
+future_co2 = co2_trend_model.predict(future_years[['year']])
+
+future_features = pd.DataFrame({
+    'year': future_years_array,
+    'temp_anomaly': future_temp,
+    'co2_ppm': future_co2
+})
+
+# Climate-driven sea level prediction for future
+predicted_levels = climate_model.predict(future_features[feature_cols])
 
 # -----------------------------
 # LOAD RCP DATA
@@ -44,25 +101,25 @@ rcp['worst_case_cm'] = baseline + (rcp['high-end'] * 100)
 # PAGE TITLE
 # -----------------------------
 st.markdown("# ⚖️ Comparison Dashboard")
-st.markdown("Compare our linear regression prediction against RCP climate scenarios.")
+st.markdown("Compare our **climate-driven prediction** against RCP climate scenarios.")
 
 # -----------------------------
 # PLOT
 # -----------------------------
 fig = go.Figure()
 
-# Historical data
+# Historical data (sea level)
 fig.add_trace(go.Scatter(
     x=sea['year'], y=sea['sea_level_cm'],
-    name='Historical Data',
+    name='Historical Data (Tide Gauge)',
     line=dict(color='steelblue', width=1.5),
     opacity=0.6
 ))
 
-# Our prediction
+# Our climate-driven prediction
 fig.add_trace(go.Scatter(
     x=future_years['year'], y=predicted_levels,
-    name='Our Prediction',
+    name='Our Prediction (Climate-Driven)',
     line=dict(color='orange', dash='dash', width=2)
 ))
 
@@ -88,7 +145,7 @@ fig.add_trace(go.Scatter(
 ))
 
 fig.update_layout(
-    title='Venice Sea Level — Our Prediction vs Climate Scenarios',
+    title='Venice Sea Level — Climate-Driven Prediction vs Climate Scenarios',
     xaxis_title='Year',
     yaxis_title='Sea Level (cm)',
     hovermode='x unified',
@@ -102,11 +159,16 @@ st.plotly_chart(fig, use_container_width=True)
 # -----------------------------
 st.markdown("""
 ### What are we comparing?
-- 🟠 **Our Prediction** — linear regression trained on real Venice tide gauge data (1909–2000)
-- 🟢 **Best Case (RCP 2.6)** — humanity drastically cuts emissions
-- 🟡 **Medium Case (RCP 8.5 median)** — some action taken, moderate emissions
-- 🔴 **Worst Case (High End)** — business as usual, no action taken
 
-The gap between our prediction and the worst case scenario represents the 
-**additional impact of accelerating climate change** that a simple linear trend cannot capture.
+- 🟠 **Our Prediction (Climate-Driven)**  
+  Multivariate regression trained on real Venice tide gauge data **plus**  
+  global temperature anomaly and CO₂ (`year`, `temp_anomaly`, `co2_ppm`).
+
+- 🟢 **Best Case (RCP 2.6)** — strong global mitigation.
+- 🟡 **Medium Case (RCP 8.5 median)** — high emissions, median sea-level response.
+- 🔴 **Worst Case (High End)** — high emissions and strong ice-sheet contribution.
+
+The gap between our climate-driven prediction and the worst-case scenario
+represents the **additional impact of accelerating global climate processes**
+that a simple statistical model trained on past data alone cannot fully capture.
 """)
