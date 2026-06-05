@@ -165,21 +165,21 @@ fig.add_trace(go.Scatter(
 # RCP Best case
 fig.add_trace(go.Scatter(
     x=rcp['year'], y=rcp['best_case_cm'],
-    name='Best Case (RCP 2.6)',
+    name='RCP 2.6',
     line=dict(color='green', dash='dot', width=2)
 ))
 
 # RCP Medium
 fig.add_trace(go.Scatter(
     x=rcp['year'], y=rcp['medium_cm'],
-    name='Medium Case (RCP 8.5 median)',
+    name='RCP 8.5 (median)',
     line=dict(color='goldenrod', dash='dot', width=2)
 ))
 
 # RCP Worst case
 fig.add_trace(go.Scatter(
     x=rcp['year'], y=rcp['worst_case_cm'],
-    name='Worst Case (High End)',
+    name='High-end scenario',
     line=dict(color='red', dash='dot', width=2)
 ))
 
@@ -188,7 +188,14 @@ fig.update_layout(
     xaxis_title='Year',
     yaxis_title='Sea Level (cm)',
     hovermode='x unified',
-    legend=dict(orientation='h', yanchor='bottom', y=-0.3)
+    legend=dict(
+        orientation='h',
+        yanchor='top',
+        y=1.02,        # legend above plot
+        xanchor='center',
+        x=0.5
+    ),
+    margin=dict(b=80)  # extra bottom space for x-axis labels
 )
 
 st.plotly_chart(fig, use_container_width=True)
@@ -208,8 +215,8 @@ st.markdown("""
   mean prediction of our regression model.
 
 - 🟢 **RCP 2.6** — strong global mitigation, limited sea-level rise.  
-- 🟡 **RCP 8.5** — high emissions, median sea-level response.  
-- 🔴 **High End** — high emissions combined with strong ice-sheet response.
+- 🟡 **RCP 8.5 (median)** — high emissions, median sea-level response.  
+- 🔴 **High-end scenario** — high emissions combined with strong ice-sheet response.
 
 ### Interpretation for planners and authorities
 
