@@ -73,28 +73,62 @@ graph['sea_level_cm'] = (
 # -----------------------------------
 # MACHINE LEARNING MODEL
 # -----------------------------------
-X = graph[['year']]
-y = graph['sea_level_cm']
+X = graph[['year']].values  # (n, 1)
+y = graph['sea_level_cm'].values
 
 model = LinearRegression()
 model.fit(X, y)
 
-# Historical trend
+# Historical trend (fitted values)
 hist_trend = model.predict(X)
 
-# Future prediction
+# -----------------------------------
+# STATISTICAL UNCERTAINTY (PREDICTION INTERVAL)
+# -----------------------------------
+# Residuals
+residuals = y - hist_trend
+n = len(X)
+x = X.flatten()
+
+# For simple linear regression: 2 parameters (slope + intercept)
+dof = max(n - 2, 1)
+
+# Residual standard error (noise level)
+s = np.sqrt(np.sum(residuals**2) / dof)
+
+# Statistics of the predictor (year)
+x_mean = x.mean()
+Sxx = np.sum((x - x_mean) ** 2)
+
+def prediction_std(x0):
+    """
+    Standard deviation of the prediction interval for a new observation
+    at year x0 (simple linear regression).
+
+    Formula:
+    s * sqrt(1 + 1/n + (x0 - x̄)^2 / Sxx)
+    """
+    return s * np.sqrt(1 + 1/n + (x0 - x_mean) ** 2 / Sxx)
+
+# -----------------------------------
+# FUTURE PREDICTION
+# -----------------------------------
 future_years = np.arange(
     graph['year'].max(),
     2101
 ).reshape(-1, 1)
 
-predicted_levels = model.predict(
-    future_years
-)
+predicted_levels = model.predict(future_years)
 
-predicted_levels = model.predict(
-    future_years
-)
+# Compute a 95% prediction interval for future years
+z = 1.96  # approx 95% interval
+future_years_flat = future_years.flatten()
+
+std_pred = np.array([prediction_std(year) for year in future_years_flat])
+
+upper_bound = predicted_levels.flatten() + z * std_pred
+lower_bound = predicted_levels.flatten() - z * std_pred
+
 # -----------------------------------
 # SESSION STATE
 # -----------------------------------
@@ -109,18 +143,15 @@ if "show_future" not in st.session_state:
 col1, col2 = st.columns(2)
 
 with col1:
-
     if st.button("📈 Explore Future Prediction"):
         st.session_state.show_future = True
 
 with col2:
-
     if st.button("📉 Return to Historical"):
         st.session_state.show_future = False
 
 # Store current mode
 show_future = st.session_state.show_future
-
 
 # -----------------------------------
 # CREATE PLOTLY FIGURE
@@ -148,56 +179,44 @@ fig.add_trace(
 
 if show_future:
 
-    # Historical trend line
+    # Historical trend line (fitted regression)
     fig.add_trace(
         go.Scatter(
             x=graph['year'],
             y=hist_trend,
             mode='lines',
-            name='Historical Trend'
+            name='Historical Trend (Linear Fit)',
+            line=dict(color='orange')
         )
     )
 
     # Future prediction
     fig.add_trace(
         go.Scatter(
-            x=future_years.flatten(),
+            x=future_years_flat,
             y=predicted_levels.flatten(),
             mode='lines',
             name='Regression Prediction',
-            line=dict(dash='dash')
+            line=dict(color='orange', dash='dash')
         )
     )
 
-    # Uncertainty range
-    uncertainty = np.array([
-        ((year - 2000) ** 1.1) * 0.08
-        for year in future_years.flatten()
-    ])
-
-    upper_bound = (
-        predicted_levels.flatten()
-        + uncertainty
-    )
-
-    lower_bound = (
-        predicted_levels.flatten()
-        - uncertainty
-    )
-
+    # Statistically derived prediction interval
     fig.add_trace(
         go.Scatter(
             x=np.concatenate([
-                future_years.flatten(),
-                future_years.flatten()[::-1]
+                future_years_flat,
+                future_years_flat[::-1]
             ]),
             y=np.concatenate([
                 upper_bound,
                 lower_bound[::-1]
             ]),
             fill='toself',
-            name='Uncertainty Range',
-            hoverinfo='skip'
+            name='Prediction Interval (~95%)',
+            hoverinfo='skip',
+            line=dict(color='rgba(255, 165, 0, 0)'),  # no border
+            fillcolor='rgba(255, 165, 0, 0.2)'        # light orange
         )
     )
 
@@ -206,7 +225,7 @@ if show_future:
 # -----------------------------------
 
 fig.update_layout(
-    title='Venice Sea Level Analysis',
+    title='Venice Sea Level Analysis (Historical + Linear Projection)',
     xaxis_title='Year',
     yaxis_title='Sea Level (cm)',
     hovermode='x unified'
@@ -228,12 +247,21 @@ st.plotly_chart(
 st.markdown("""
 ### Historical Interpretation
 
-The historical tide gauge data indicates a long-term increase
-in relative sea level in Venice over the observed period.
+The tide gauge record describes **relative sea level** in Venice – that is,
+the height of the sea surface **relative to the land** at the gauge.
 
-This gradual rise contributes to an increased flooding risk,
-especially during seasonal high-tide events such as
-*Acqua Alta*.
+This relative signal combines:
+
+- **Global sea-level rise** (thermal expansion of the oceans, melting glaciers and ice sheets), and  
+- **Local vertical land motion**, in particular **land subsidence** (the city and lagoon slowly sinking).
+
+A positive long-term trend in the tide gauge therefore means that the **water level
+is rising relative to the land**, either because the ocean is rising, the land is sinking,
+or (in reality) a combination of both.
+
+Over the period 1909–2000, the historical data show a clear upward trend in relative
+sea level in Venice. This long-term rise increases the background likelihood of
+flooding, especially during high-tide events such as *Acqua Alta*.
 """)
 
 # -----------------------------------
@@ -245,10 +273,21 @@ if show_future:
     st.markdown("""
     ### Future Projection
 
-    The regression model extends historical trends into the future
-    and suggests that sea levels may continue rising throughout
-    the 21st century if current patterns persist.
+    The linear regression model uses only **time (year)** to describe the observed
+    rise in relative sea level. Extrapolating this straight-line trend to 2100 gives
+    a **first-order projection** of how sea level could evolve if the historical
+    behaviour simply continues.
 
-    The uncertainty range widens over time, reflecting the growing
-    unpredictability of long-term climate and environmental systems.
+    The shaded band around the projection is a **statistical prediction interval**
+    derived from the regression residuals. It represents an approximate range within
+    which individual future observations might fall, assuming that:
+
+    - the linear relationship between year and sea level remains valid, and  
+    - the size of the year-to-year noise is similar to the past.
+
+    The interval widens with time because predictions far beyond the historical
+    data range become increasingly uncertain. This illustrates that while a
+    linear trend provides a useful baseline, long-term planning for Venice should
+    also consider more complex physical scenarios (e.g. accelerated ice-sheet
+    melt and changing subsidence rates).
     """)
