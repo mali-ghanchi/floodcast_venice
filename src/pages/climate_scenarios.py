@@ -231,7 +231,7 @@ st.markdown("""
 ### Interpretation
 
 - The **orange dashed line** is the **regression fit** learned from historical data:
-  it links `year`, `temp_anomaly`, and `co2_ppm` to **Venice sea level**.
+  it links **year**, **temp_anomaly**, and **co2_ppm** to **Venice sea level**.
 
 - When you click **“Explore Future Prediction”**, the app:
   1. Fits simple linear trends for global temperature and CO₂ over time.

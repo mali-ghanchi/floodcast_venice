@@ -45,16 +45,15 @@ with kcol4:
     st.metric(label="Flood Risk Assessment", value="High")
 
 # -------------------------
-# NAVIGATION SECTION (MOVED UP)
+# NAVIGATION SECTION
 # -------------------------
 st.markdown("---")
-
 st.header("📊 Explore the analysis")
 
-nav1, nav2, nav3, nav4 = st.columns(4)
+# First row: 3 cards
+row1_col1, row1_col2, row1_col3 = st.columns(3)
 
-# HISTORICAL ANALYSIS
-with nav1:
+with row1_col1:
     st.subheader("📈 Historical Analysis")
     st.write("""
     Explore historical tide gauge measurements and
@@ -66,8 +65,7 @@ with nav1:
         icon="📈"
     )
 
-# CLIMATE-DRIVEN MODEL
-with nav2:
+with row1_col2:
     st.subheader("🌍 Climate-Driven Model")
     st.write("""
     Use global temperature and CO₂, together with time,
@@ -80,8 +78,7 @@ with nav2:
         icon="🌍"
     )
 
-# COMPARISON DASHBOARD
-with nav3:
+with row1_col3:
     st.subheader("⚖️ Comparative Dashboard")
     st.write("""
     Compare our climate-driven prediction with RCP-based
@@ -93,8 +90,10 @@ with nav3:
         icon="⚖️"
     )
 
-# GLOBAL vs LOCAL SEA LEVEL
-with nav4:
+# Second row: 2 cards (centered visually)
+row2_spacer, row2_col1, row2_col2, row2_spacer2 = st.columns([0.5, 1, 1, 0.5])
+
+with row2_col1:
     st.subheader("🌊 Global vs Local Sea Level")
     st.write("""
     Contrast Venice tide gauge data with global mean sea level
@@ -106,8 +105,20 @@ with nav4:
         icon="🌊"
     )
 
+with row2_col2:
+    st.subheader("📁 Resources & Data")
+    st.write("""
+    Download the datasets used in this dashboard
+    for transparency and further analysis.
+    """)
+    st.page_link(
+        "pages/Resources.py",
+        label="Open Resources",
+        icon="📁"
+    )
+
 # -------------------------
-# GLIMPSE + IMAGES SECTION (LOWER)
+# GLIMPSE + IMAGES SECTION
 # -------------------------
 st.markdown("---")
 
@@ -118,15 +129,11 @@ These images show how recurrent flooding and relative sea-level rise
 affect daily life in Venice, from emergency response to tourism and heritage sites.
 """)
 
-# Fundraiser link (placeholder URL – replace with real one)
+# optional: placeholder link; change or remove as you like
 st.markdown(
-    """
-    [👉 Support flood relief and adaptation efforts in Venice](https://www.savevenice.org/project/immediate-response-fund)
-    """,
-    unsafe_allow_html=False
+    "[👉 Learn more about flood relief and adaptation efforts](https://example.org)"
 )
 
-# IMAGES
 col1, col2, col3 = st.columns(3)
 
 with col1:
