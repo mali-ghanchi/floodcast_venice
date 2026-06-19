@@ -1,5 +1,10 @@
 import streamlit as st
 
+st.set_page_config(
+    page_title="FloodCast Venice",
+    layout="wide"
+)
+
 # -------------------------
 # TITLE + INTRO
 # -------------------------
