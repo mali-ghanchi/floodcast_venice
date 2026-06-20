@@ -86,11 +86,13 @@ XtX_inv = np.linalg.inv(X_design.T @ X_design)
 # Metrics
 mae = mean_absolute_error(y, y_pred_hist)
 rmse = np.sqrt(np.mean(residuals**2))
+r2 = climate_model.score(X, y)
 
 st.markdown(f"""
 ### Historical Fit (Climate-Driven Model)
 
 - Features used: `year`, `temp_anomaly`, `co2_ppm`  
+- R² Score: **{r2:.4f}**  
 - MAE (Mean Absolute Error): **{mae:.2f} cm**  
 - RMSE (Root Mean Squared Error): **{rmse:.2f} cm**
 """)
