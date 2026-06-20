@@ -240,6 +240,7 @@ st.plotly_chart(
     use_container_width=True
 )
 
+
 # -----------------------------------
 # INTERPRETATION
 # -----------------------------------
@@ -291,3 +292,56 @@ if show_future:
     also consider more complex physical scenarios (e.g. accelerated ice-sheet
     melt and changing subsidence rates).
     """)
+
+    # -----------------------------------
+# FUTURE TABLE + EXPORT (ONLY IF FUTURE IS SHOWN)
+# -----------------------------------
+
+if show_future:
+
+    st.markdown("### Future prediction data")
+
+    # Full future results table
+    future_full_df = pd.DataFrame({
+        "year": future_years_flat,
+        "predicted_sea_level_cm": predicted_levels.flatten(),
+        "lower_95PI_cm": lower_bound,
+        "upper_95PI_cm": upper_bound
+    })
+
+    # Year range selector
+    min_year = int(future_years_flat.min())
+    max_year = int(future_years_flat.max())
+
+    start_year, end_year = st.slider(
+        "Select year range for export",
+        min_value=min_year,
+        max_value=max_year,
+        value=(min_year, max_year),
+        step=1
+    )
+
+    # Filter by selected range
+    mask = (future_full_df["year"] >= start_year) & (future_full_df["year"] <= end_year)
+    future_filtered_df = future_full_df.loc[mask].reset_index(drop=True)
+
+    st.markdown(
+        "You can edit the table below (delete rows and change values) "
+        "before downloading."
+    )
+
+    # Editable table
+    edited_df = st.data_editor(
+        future_filtered_df,
+        num_rows="dynamic",   # allows adding/removing rows
+        key="future_editor"
+    )
+
+    # Download as CSV
+    csv_data = edited_df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📥 Download edited future predictions as CSV",
+        data=csv_data,
+        file_name="venice_future_linear_predictions.csv",
+        mime="text/csv"
+    )
