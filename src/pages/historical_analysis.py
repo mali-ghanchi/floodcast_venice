@@ -257,6 +257,38 @@ if show_future:
     melt and changing subsidence rates).
     """)
 
+    # -----------------------------------
+    # RESIDUAL PLOT (ONLY WHEN FUTURE IS SHOWN)
+    # -----------------------------------
+    st.markdown("### Residual analysis")
+
+    fig_res = go.Figure()
+    fig_res.add_trace(go.Scatter(
+        x=graph["year"],
+        y=residuals,
+        mode="markers",
+        name="Residuals (Observed - Predicted)",
+        marker=dict(color="darkslategray", size=6)
+    ))
+
+    fig_res.add_hline(y=0, line=dict(color="red", dash="dot"))
+
+    fig_res.update_layout(
+        title="Residuals over time",
+        xaxis_title="Year",
+        yaxis_title="Residual (cm)",
+        hovermode="x"
+    )
+
+    st.plotly_chart(fig_res, use_container_width=True)
+
+    st.markdown("""
+    The residuals show how far the model predictions deviate from the observed
+    sea level in each year. Values scattered around zero without a strong long-term
+    trend indicate that the linear model captures the **overall mean rise** reasonably
+    well, while short-term variability and local processes remain unresolved.
+    """)
+
 # -----------------------------------
 # FUTURE TABLE + EXPORT (ONLY IF FUTURE IS SHOWN)
 # -----------------------------------
