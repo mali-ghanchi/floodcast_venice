@@ -16,7 +16,7 @@ st.markdown("""
 Venice is one of the most flood-prone cities in the world due to
 rising sea levels, land subsidence, and climate change.
 
-FloodCast Venice - Water you thinking? is an interactive decision-support dashboard
+FloodCast Venice - Water you thinking? 💦 is an interactive decision-support dashboard
 designed to analyse historical sea level trends and compare future
 flooding risks under different climate scenarios.
 
