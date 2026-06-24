@@ -82,12 +82,12 @@ st.markdown(f"""
 # -----------------------------------
 # STATISTICAL UNCERTAINTY (PREDICTION INTERVAL)
 # -----------------------------------
-residuals = y - hist_trend
+residuals_full = y - hist_trend
 n = len(X)
 x = X.flatten()
 
 dof = max(n - 2, 1)
-s = np.sqrt(np.sum(residuals**2) / dof)
+s = np.sqrt(np.sum(residuals_full**2) / dof)
 
 x_mean = x.mean()
 Sxx = np.sum((x - x_mean) ** 2)
@@ -288,7 +288,7 @@ the height of the sea surface **relative to the land** at the gauge.
 
 This relative signal combines:
 
-- **Global sea-level rise** (thermal expansion of the oceans, melting glaciers and ice sheets),  
+- **Global sea-level rise** (thermal expansion of the oceans, melting glaciers and ice sheets),
 - **Local vertical land motion**, in particular **land subsidence**.
 
 A positive long-term trend in the tide gauge therefore means that the **water level
@@ -319,23 +319,25 @@ if show_future:
     """)
 
     # -----------------------------------
-    # RESIDUAL PLOT
+    # TEST-SET RESIDUAL PLOT
     # -----------------------------------
-    st.markdown("### Residual analysis")
+    st.markdown("### Residual analysis (test set only)")
+
+    test_residuals = y_test - y_test_pred
 
     fig_res = go.Figure()
     fig_res.add_trace(go.Scatter(
-        x=graph["year"],
-        y=residuals,
+        x=X_test.flatten(),
+        y=test_residuals,
         mode="markers",
-        name="Residuals (Observed - Predicted)",
+        name="Test Residuals (Observed - Predicted)",
         marker=dict(color="darkslategray", size=6)
     ))
 
     fig_res.add_hline(y=0, line=dict(color="red", dash="dot"))
 
     fig_res.update_layout(
-        title="Residuals over time",
+        title="Test-set residuals over time",
         xaxis_title="Year",
         yaxis_title="Residual (cm)",
         hovermode="x"

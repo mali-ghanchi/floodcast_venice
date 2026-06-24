@@ -166,7 +166,7 @@ climate_model_full.fit(X_full, y_full)
 y_pred_hist = climate_model_full.predict(X_full)
 
 # Residuals & full-data metrics
-residuals = y_full - y_pred_hist
+residuals_full = y_full - y_pred_hist
 mae_full = mean_absolute_error(y_full, y_pred_hist)
 rmse_full = np.sqrt(mean_squared_error(y_full, y_pred_hist))
 r2_full = r2_score(y_full, y_pred_hist)
@@ -180,7 +180,7 @@ n_full = len(X_full)
 x_year = df["year"].values  # raw years
 
 dof = max(n_full - 2, 1)
-s = np.sqrt(np.sum(residuals**2) / dof)
+s = np.sqrt(np.sum(residuals_full**2) / dof)
 
 x_mean = x_year.mean()
 Sxx = np.sum((x_year - x_mean) ** 2)
@@ -321,25 +321,27 @@ prediction interval.
 """)
 
 # ===================================
-# 12. RESIDUAL PLOT (ONLY WHEN FUTURE IS SHOWN)
+# 12. TEST-SET RESIDUAL PLOT (ONLY WHEN FUTURE IS SHOWN)
 # ===================================
 
 if show_future:
-    st.markdown("### Residual analysis")
+    st.markdown("### Residual analysis (test set only)")
+
+    test_residuals = y_test - y_test_pred
 
     fig_res = go.Figure()
     fig_res.add_trace(go.Scatter(
-        x=years_sorted,
-        y=residuals[sort_idx],
+        x=years_test,
+        y=test_residuals,
         mode="markers",
-        name="Residuals (Observed - Predicted)",
+        name="Test Residuals (Observed - Predicted)",
         marker=dict(color="darkslategray", size=6)
     ))
 
     fig_res.add_hline(y=0, line=dict(color="red", dash="dot"))
 
     fig_res.update_layout(
-        title="Residuals over time",
+        title="Test-set residuals over time",
         xaxis_title="Year",
         yaxis_title="Residual (cm)",
         hovermode="x"
@@ -348,10 +350,9 @@ if show_future:
     st.plotly_chart(fig_res, use_container_width=True)
 
     st.markdown("""
-    The residuals show how far the tuned climate-driven model deviates from the
-    observed sea level in each year. Patterns in the residuals can indicate
-    remaining nonlinearities or processes not captured by the simple linear
-    relationship with year, temperature, and CO₂.
+    These residuals are computed only on the **held-out test period**. They show
+    how far the model's predictions deviate from the observed sea level in the
+    unseen later years.
     """)
 
 # ===================================
