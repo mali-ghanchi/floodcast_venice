@@ -2,7 +2,7 @@
 # RESOURCES: DATA DOWNLOADS
 # -----------------------------
 import streamlit as st
-import pandas as pd  # ensure pandas is imported
+import pandas as pd
 
 st.markdown("---")
 st.markdown("## 📁 Resources – Download the data")
@@ -30,7 +30,12 @@ gmsl_res = pd.read_csv(
 )
 gmsl_res.columns = ['year_decimal', 'gmsl_cm', 'gmsl_cm_smooth']
 
+# corrected filename here
 rcp_res = pd.read_excel('data/venice_sea_level comparison.xlsx')
+
+# Load NASA Excel file as raw bytes for download
+with open('data/ipcc_ar6_sea_level_projection_psmsl_id_39.xlsx', 'rb') as f:
+    nasa_excel_bytes = f.read()
 
 # 2 columns layout for buttons
 col_r1, col_r2 = st.columns(2)
@@ -50,6 +55,14 @@ with col_r1:
         data=temp_res.to_csv(index=False).encode('utf-8'),
         file_name="global_temperature_anomaly.csv",
         mime="text/csv"
+    )
+
+    st.markdown("**NASA local sea-level projections (IPCC AR6 / PSMSL)**")
+    st.download_button(
+        label="Download NASA projection file (Excel)",
+        data=nasa_excel_bytes,
+        file_name="ipcc_ar6_sea_level_projection_psmsl_id_39.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 with col_r2:
