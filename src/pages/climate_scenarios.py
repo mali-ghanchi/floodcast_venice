@@ -19,8 +19,8 @@ st.markdown("""
 This is an **experimental climate-driven model** version:
 
 - **Chronological train/test split** (train on earlier years, test on later years)  
-- **Scaling** of features using `StandardScaler`  
-- **Ridge regression** with **hyperparameter tuning** (`alpha`) via `GridSearchCV`  
+- **Scaling** of features using StandardScaler  
+- **Ridge regression** with **hyperparameter tuning** (alpha) via GridSearchCV  
 - Evaluation on a **held-out test period**  
 - Then refit the **best model on all data** for:
   - historical fit,
@@ -125,9 +125,9 @@ best_alpha = grid_search.best_params_["model__alpha"]
 best_cv_score = grid_search.best_score_
 
 st.markdown(f"""
-### Hyperparameter tuning (Ridge regression)
+### Hyperparameter tuning 
 
-- Tried alphas: `{param_grid["model__alpha"]}`  
+- Tried alphas: {param_grid["model__alpha"]} 
 - Best alpha (from 5-fold CV on train): **{best_alpha}**  
 - Best cross-validated R² (train folds): **{best_cv_score:.4f}**
 """)
@@ -170,14 +170,6 @@ residuals = y_full - y_pred_hist
 mae_full = mean_absolute_error(y_full, y_pred_hist)
 rmse_full = np.sqrt(mean_squared_error(y_full, y_pred_hist))
 r2_full = r2_score(y_full, y_pred_hist)
-
-st.markdown(f"""
-### Historical Fit on Full Data 
-
-- R² (full data): **{r2_full:.4f}**  
-- MAE (full data): **{mae_full:.2f} cm**  
-- RMSE (full data): **{rmse_full:.2f} cm**
-""")
 
 # ===================================
 # 7. APPROX. PREDICTION INTERVAL (SIMPLE FORMULA)
@@ -316,7 +308,7 @@ st.markdown("""
 
 - The model uses **year**, **global temperature anomaly**, and **CO₂ concentration** as predictors.  
 - We use a pipeline with **feature scaling** and **Ridge regression**, and tune the
-  regularisation strength (`alpha`) via grid search with cross-validation on the
+  regularisation strength (alpha) via grid search with cross-validation on the
   **training period** (earlier years).  
 - We evaluate on a **held-out later period** (chronological test), which mimics
   real forecasting ("predict future from past").  

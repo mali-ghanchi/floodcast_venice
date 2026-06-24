@@ -71,9 +71,9 @@ rmse_simple = np.sqrt(mean_squared_error(y_test, y_test_pred))
 r_simple = np.corrcoef(y_test, y_test_pred)[0, 1] if len(y_test) > 1 else np.nan
 
 st.markdown(f"""
-### Historical Fit (Simple Model)
+### Historical Fit
 
-- Feature used: `year`
+- Feature used: year
 - Pearson R: **{r_simple:.4f}**
 - MAE (Mean Absolute Error): **{mae_simple:.2f} cm**
 - RMSE (Root Mean Squared Error): **{rmse_simple:.2f} cm**
@@ -307,7 +307,7 @@ if show_future:
     st.markdown(f"""
     ### Future Projection
 
-    The linear regression model uses only **time (`year`)** to describe the observed
+    The linear regression model uses only **time (year)** to describe the observed
     rise in relative sea level. Extrapolating this straight-line trend to **January 2100**
     gives a simple baseline projection.
 
