@@ -6,7 +6,7 @@ from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, train_test_split
 
 import plotly.graph_objects as go
 
@@ -18,10 +18,10 @@ st.title("🌍 Climate-Driven Sea Level Prediction")
 st.markdown("""
 This is an **experimental climate-driven model** version:
 
-- **Chronological train/test split** (train on earlier years, test on later years)  
+- **Random train/test split**  
 - **Scaling** of features using `StandardScaler`  
 - **Ridge regression** with **hyperparameter tuning** (`alpha`) via `GridSearchCV`  
-- Evaluation on a **held-out test period**  
+- Evaluation on a **held-out test set**  
 - Then refit the **best model on all data** for:
   - historical fit,
   - future projection to 2100,
@@ -42,7 +42,6 @@ sea["sea_level_cm"] = sea["sea_level_mm"] / 10
 sea = sea[["year", "sea_level_cm"]]
 
 # --- Global temperature: GLB.Ts+dSST.csv ---
-# col 0 = Year, col 13 ≈ annual mean anomaly
 temp_raw = pd.read_csv("data/GLB.Ts+dSST.csv", header=None, sep=",")
 
 temp = temp_raw[[0, 13]].copy()
@@ -51,7 +50,6 @@ temp["temp_anomaly"] = pd.to_numeric(temp["temp_anomaly"], errors="coerce")
 temp = temp.dropna(subset=["temp_anomaly"])
 
 # --- CO₂: co2_annmean_mlo.csv ---
-# col 0 = year, col 1 = annual mean ppm
 co2_raw = pd.read_csv("data/co2_annmean_mlo.csv", header=None, sep=",")
 
 co2 = co2_raw[[0, 1]].copy()
@@ -71,31 +69,25 @@ year_max = int(df["year"].max())
 st.markdown(f"**Merged dataset years:** {year_min}–{year_max}  ·  **Samples:** {len(df)}")
 
 # ===================================
-# 3. FEATURES, TARGET, CHRONOLOGICAL TRAIN/TEST SPLIT
+# 3. FEATURES, TARGET, RANDOM TRAIN/TEST SPLIT
 # ===================================
 
 feature_cols = ["year", "temp_anomaly", "co2_ppm"]
 X_full = df[feature_cols].values
 y_full = df["sea_level_cm"].values
+years_full = df["year"].values
 
-# chronological split: earliest → train, latest → test
-test_frac = 0.2
-n = len(X_full)
-n_test = int(n * test_frac)
-n_train = n - n_test
-
-# sort by year
-sort_idx = np.argsort(df["year"].values)
-X_sorted = X_full[sort_idx]
-y_sorted = y_full[sort_idx]
-years_sorted = df["year"].values[sort_idx]
-
-X_train, X_test = X_sorted[:n_train], X_sorted[n_train:]
-y_train, y_test = y_sorted[:n_train], y_sorted[n_train:]
-years_test = years_sorted[n_train:]
+X_train, X_test, y_train, y_test, years_train, years_test = train_test_split(
+    X_full,
+    y_full,
+    years_full,
+    test_size=0.2,
+    random_state=42,
+    shuffle=True
+)
 
 st.markdown(f"Train size: **{len(X_train)}**  ·  Test size: **{len(X_test)}**")
-st.markdown(f"Test years: **{int(years_test.min())}–{int(years_test.max())}**")
+st.markdown(f"Test years span: **{int(years_test.min())}–{int(years_test.max())}**")
 
 # ===================================
 # 4. PIPELINE: SCALING + RIDGE + GRID SEARCH
@@ -124,16 +116,9 @@ best_model = grid_search.best_estimator_
 best_alpha = grid_search.best_params_["model__alpha"]
 best_cv_score = grid_search.best_score_
 
-st.markdown(f"""
-### Hyperparameter tuning (Ridge regression)
-
-- Tried alphas: `{param_grid["model__alpha"]}`  
-- Best alpha (from 5-fold CV on train): **{best_alpha}**  
-- Best cross-validated R² (train folds): **{best_cv_score:.4f}**
-""")
 
 # ===================================
-# 5. EVALUATE ON HELD-OUT TEST PERIOD
+# 5. EVALUATE ON HELD-OUT TEST SET
 # ===================================
 
 y_test_pred = best_model.predict(X_test)
@@ -143,16 +128,16 @@ mae_test = mean_absolute_error(y_test, y_test_pred)
 rmse_test = np.sqrt(mean_squared_error(y_test, y_test_pred))
 
 st.markdown(f"""
-### Performance on held-out test period 
+### Performance on held-out test set
 
-- Test years: **{int(years_test.min())}–{int(years_test.max())}**  
+- Test years span: **{int(years_test.min())}–{int(years_test.max())}**  
 - Test R²: **{r2_test:.4f}**  
 - Test MAE: **{mae_test:.2f} cm**  
 - Test RMSE: **{rmse_test:.2f} cm**
 """)
 
 # ===================================
-# 6. REFIT BEST MODEL ON FULL DATA (for plots & projections)
+# 6. REFIT BEST MODEL ON FULL DATA
 # ===================================
 
 climate_model_full = Pipeline([
@@ -180,12 +165,11 @@ st.markdown(f"""
 """)
 
 # ===================================
-# 7. APPROX. PREDICTION INTERVAL (SIMPLE FORMULA)
+# 7. APPROX. PREDICTION INTERVAL
 # ===================================
-# Approximate as in simple linear-in-year model.
 
 n_full = len(X_full)
-x_year = df["year"].values  # raw years
+x_year = df["year"].values
 
 dof = max(n_full - 2, 1)
 s = np.sqrt(np.sum(residuals**2) / dof)
@@ -194,11 +178,6 @@ x_mean = x_year.mean()
 Sxx = np.sum((x_year - x_mean) ** 2)
 
 def prediction_std(year_val: float) -> float:
-    """
-    Approximate prediction standard deviation for a new observation at given year.
-    Using simple linear-regression formula:
-        s * sqrt(1 + 1/n + (x0 - x̄)^2 / Sxx)
-    """
     return s * np.sqrt(1 + 1 / n_full + (year_val - x_mean) ** 2 / Sxx)
 
 # ===================================
@@ -208,7 +187,6 @@ def prediction_std(year_val: float) -> float:
 future_years = np.arange(year_max, 2101)
 future_years_df = pd.DataFrame({"year": future_years})
 
-# Simple linear trends for temp & CO₂ over year, using Ridge with best_alpha
 temp_trend_model = Ridge(alpha=best_alpha)
 temp_trend_model.fit(df[["year"]], df["temp_anomaly"])
 
@@ -227,7 +205,6 @@ future_features = pd.DataFrame({
 X_future = future_features[feature_cols].values
 y_future_pred = climate_model_full.predict(X_future)
 
-# Approximate 95% prediction interval in terms of year
 z = 1.96
 std_pred = np.array([prediction_std(y) for y in future_years])
 
@@ -238,28 +215,32 @@ lower_bound = y_future_pred - z * std_pred
 # 9. SESSION STATE (BUTTONS)
 # ===================================
 
-if "show_future_climate_tuned_chrono" not in st.session_state:
-    st.session_state.show_future_climate_tuned_chrono = False
+if "show_future_climate_tuned_random" not in st.session_state:
+    st.session_state.show_future_climate_tuned_random = False
 
 col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
     if st.button("📈 Explore Future Prediction"):
-        st.session_state.show_future_climate_tuned_chrono = True
+        st.session_state.show_future_climate_tuned_random = True
 
 with col_btn2:
     if st.button("📉 Return to Historical"):
-        st.session_state.show_future_climate_tuned_chrono = False
+        st.session_state.show_future_climate_tuned_random = False
 
-show_future = st.session_state.show_future_climate_tuned_chrono
+show_future = st.session_state.show_future_climate_tuned_random
 
 # ===================================
 # 10. PLOT: HISTORICAL + OPTIONAL FUTURE + UNCERTAINTY
 # ===================================
 
+sort_idx = np.argsort(df["year"].values)
+years_sorted = df["year"].values[sort_idx]
+y_sorted = y_full[sort_idx]
+hist_pred_sorted = y_pred_hist[sort_idx]
+
 fig = go.Figure()
 
-# Historical (sorted)
 fig.add_trace(go.Scatter(
     x=years_sorted,
     y=y_sorted,
@@ -267,8 +248,6 @@ fig.add_trace(go.Scatter(
     mode="lines",
     line=dict(color="steelblue", width=1.5)
 ))
-
-hist_pred_sorted = y_pred_hist[sort_idx]
 
 fig.add_trace(go.Scatter(
     x=years_sorted,
@@ -278,7 +257,6 @@ fig.add_trace(go.Scatter(
     line=dict(color="orange", dash="dash", width=2)
 ))
 
-# Future extrapolated prediction + uncertainty
 if show_future:
     fig.add_trace(go.Scatter(
         x=np.concatenate([future_years, future_years[::-1]]),
@@ -317,9 +295,8 @@ st.markdown("""
 - The model uses **year**, **global temperature anomaly**, and **CO₂ concentration** as predictors.  
 - We use a pipeline with **feature scaling** and **Ridge regression**, and tune the
   regularisation strength (`alpha`) via grid search with cross-validation on the
-  **training period** (earlier years).  
-- We evaluate on a **held-out later period** (chronological test), which mimics
-  real forecasting ("predict future from past").  
+  **training set**.  
+- We evaluate on a **held-out random test set**.  
 - Finally, we refit the best model on **all years** to obtain the historical fit
   and future projections up to 2100.
 
@@ -402,13 +379,13 @@ if show_future:
     edited_df = st.data_editor(
         future_filtered_df,
         num_rows="dynamic",
-        key="future_climate_tuned_chrono_editor"
+        key="future_climate_tuned_random_editor"
     )
 
     csv_data = edited_df.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="📥 Download edited tuned climate-driven predictions as CSV",
         data=csv_data,
-        file_name="venice_future_climate_tuned_chronological_predictions.csv",
+        file_name="venice_future_climate_tuned_random_predictions.csv",
         mime="text/csv"
     )

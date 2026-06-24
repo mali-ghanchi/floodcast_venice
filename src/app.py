@@ -1,7 +1,10 @@
 import streamlit as st
 
+# -------------------------
+# PAGE CONFIG
+# -------------------------
 st.set_page_config(
-    page_title="FloodCast Venice",
+    page_title="FloodCast Venice - Water you thinking? 💦",
     layout="wide"
 )
 
@@ -90,10 +93,22 @@ with row1_col3:
         icon="⚖️"
     )
 
-# Second row: 2 cards (centered visually)
-row2_spacer, row2_col1, row2_col2, row2_spacer2 = st.columns([0.5, 1, 1, 0.5])
+# Second row: 3 cards
+row2_col1, row2_col2, row2_col3 = st.columns(3)
 
 with row2_col1:
+    st.subheader("🆓 Free Forecast")
+    st.write("""
+    Explore a standalone future sea-level forecast for Venice
+    and compare the projected trend with NASA scenario data.
+    """)
+    st.page_link(
+        "pages/free_forecast.py",
+        label="Open Free Forecast",
+        icon="🆓"
+    )
+
+with row2_col2:
     st.subheader("🌊 Global vs Local Sea Level")
     st.write("""
     Contrast Venice tide gauge data with global mean sea level
@@ -105,7 +120,7 @@ with row2_col1:
         icon="🌊"
     )
 
-with row2_col2:
+with row2_col3:
     st.subheader("📁 Resources & Data")
     st.write("""
     Download the datasets used in this dashboard
@@ -129,7 +144,6 @@ These images show how recurrent flooding and relative sea-level rise
 affect daily life in Venice, from emergency response to tourism and heritage sites.
 """)
 
-# optional: placeholder link; change or remove as you like
 st.markdown(
     "[👉 Learn more about flood relief and adaptation efforts](https://example.org)"
 )
