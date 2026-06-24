@@ -8,7 +8,7 @@ import requests
 # -------------------------------------------------
 # 4. SHORT-TERM FORECAST FROM WORLDTIDES API
 # -------------------------------------------------
-st.markdown("### Short-term tide forecast for Venice)")
+st.markdown("### Short-term tide forecast for Venice")
 
 @st.cache_data
 def fetch_venice_tides_worldtides(days: int = 3) -> pd.DataFrame:

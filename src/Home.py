@@ -144,9 +144,6 @@ These images show how recurrent flooding and relative sea-level rise
 affect daily life in Venice, from emergency response to tourism and heritage sites.
 """)
 
-st.markdown(
-    "[👉 Learn more about flood relief and adaptation efforts](https://example.org)"
-)
 
 col1, col2, col3 = st.columns(3)
 
