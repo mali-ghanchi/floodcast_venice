@@ -1,259 +1,123 @@
-# FloodCast Venice — Sea Level Rise Predictor
+# Project Plan
 
 **Author:** Muhammad Ali Ghanchi
 
 ---
 
-# Project Goal
+## Project Title
 
-Develop a Python-based, multi-page Streamlit web application that analyses historical tide gauge data from Venice, combines it with global climate indicators such as temperature anomalies and atmospheric CO₂, and applies statistical and machine learning models to estimate future relative sea level.
-
-The application also compares these model-based projections with external scenario-based projections, including NASA/IPCC local sea-level projections for Venice, and provides decision-support outputs for planners, civil protection agencies, researchers, and the wider public.
+FloodCast Venice — Sea Level Rise Predictor
 
 ---
 
-# Development Phases
+## Project Goal
 
-## Phase 1 — Setup & Data Acquisition
-
-### Tasks
-- Set up Python virtual environment.
-- Initialize Git repository and connect to GitLab.
-- Download historical tide gauge data for Venice.
-- Download global temperature anomaly data.
-- Download atmospheric CO₂ data.
-- Download global mean sea level data.
-- Download scenario comparison data for Venice.
-- Download NASA/IPCC local sea-level projection data.
-- Create project folder structure:
-  - `src/`
-  - `data/`
-  - `assets/`
-  - `.streamlit/`
+Develop a Python-based, multi-page Streamlit web application that analyses historical tide gauge data from Venice, combines it with global climate indicators, and applies statistical and machine learning models to estimate future relative sea level. The application compares model-based projections with NASA/IPCC published scenarios and RCP climate pathways, and provides decision-support outputs for planners, civil protection agencies, and the general public.
 
 ---
 
-## Phase 2 — Data Processing
+## Development Phases
 
-### Historical Tide Gauge Data
-- Remove missing values (`-99999`).
-- Convert sea level values from millimetres to centimetres.
+### Phase 1 — Setup and Data Acquisition (Completed)
 
-### Climate Data
-- Load temperature anomaly data.
-- Load atmospheric CO₂ data.
-- Select relevant columns.
-- Convert values to numeric.
-- Remove invalid entries.
-
-### Global Mean Sea Level
-- Load and process global sea-level data.
-- Prepare for comparison with Venice observations.
-
-### Scenario Data
-- Load and process scenario comparison datasets.
-
-### NASA/IPCC Local Projections
-- Load data from the `Total` sheet.
-- Identify year columns.
-- Reshape data from wide to long format.
-- Convert values from metres to centimetres.
-- Align projections to the Venice baseline around 2020.
-
-### Dataset Construction
-- Merge Venice sea level, temperature anomalies, and CO₂ by year.
-- Create the final modelling dataset.
+- Set up Python virtual environment
+- Initialized Git repository and connected to GitLab (Prof. Miunske's organization)
+- Downloaded all datasets:
+  - Venice tide gauge data (PSMSL, 1909–2000)
+  - Global temperature anomalies (NASA GISTEMP)
+  - Atmospheric CO2 (Mauna Loa)
+  - Global Mean Sea Level (NASA satellite altimetry)
+  - RCP scenario projections (Zenodo)
+  - NASA/IPCC local sea-level projections for Venice (IPCC AR6)
+- Created project folder structure: `src/`, `data/`, `assets/`, `.streamlit/`
+- Created documentation files: `README.md`, `brainstorm.md`, `plan.md`, `alignment.md`
 
 ---
 
-## Phase 3 — Model Development
+### Phase 2 — Data Processing (Completed)
 
-### Historical Linear Regression
-
-- Train a linear regression model:
-  - `year → relative sea level (cm)`
-- Perform chronological train/test split.
-- Evaluate using:
-  - Pearson R
-  - MAE
-  - RMSE
-- Estimate a 95% prediction interval.
-- Extrapolate predictions to January 2100.
+- Removed missing values (-99999) from tide gauge data
+- Converted sea level from millimetres to centimetres
+- Loaded and cleaned temperature anomaly and CO2 datasets
+- Merged Venice sea level, temperature, and CO2 by year into a single modelling dataset
+- Loaded and processed NASA/IPCC projection Excel file (Total sheet, wide-to-long reshape, metres to centimetres, alignment to Venice 2020 baseline)
+- Loaded RCP scenario data and converted to centimetres above year 2000 baseline
 
 ---
 
-### Climate-Driven Regression
+### Phase 3 — Model Development (Completed)
 
-Predictors:
+#### Historical Linear Regression
+- Feature: `year`
+- Target: `sea_level_cm`
+- Chronological 80/20 train/test split for evaluation
+- Evaluated using Pearson R, MAE, RMSE on held-out test period
+- 95% prediction interval derived analytically from residual standard error
+- Extrapolated predictions to 2100
+- Compared against NASA/IPCC local projections on the same graph
 
-- `year`
-- `temp_anomaly`
-- `co2_ppm`
-
-Methods:
-
-- Feature scaling
-- Ridge regression
-- GridSearchCV hyperparameter tuning
-
-Evaluation:
-
-- Train/test performance
-- MAE
-- RMSE
-- R²
-
-Forecasting:
-
-- Extrapolate climate variables to 2100.
-- Predict future sea level.
-- Construct prediction intervals.
+#### Climate-Driven Regression
+- Features: `year`, `temp_anomaly`, `co2_ppm`
+- Feature scaling via StandardScaler
+- Ridge regression with GridSearchCV hyperparameter tuning (alphas: 0.01, 0.1, 1.0, 10.0, 100.0)
+- 5-fold cross-validation on training set
+- Chronological 80/20 split for evaluation
+- Evaluated using R², MAE, RMSE on held-out test period
+- Future temperature and CO2 extrapolated linearly then fed into climate model to 2100
+- Approximate prediction interval from residual variance
 
 ---
 
-### SARIMAX Forecasting
+### Phase 4 — Visualization (Completed)
 
-- Train a SARIMAX model on annual sea-level observations.
-- Use chronological train/test evaluation.
-- Calculate:
-  - Pearson R
-  - MAE
-  - RMSE
-- Refit using the full dataset.
-- Forecast to January 2100.
-- Compare forecasts with NASA local projections.
+All charts built with Plotly:
+- Historical data with regression trend and prediction interval
+- Climate-driven forecast with uncertainty band
+- RCP scenario comparison dashboard with threshold-crossing table
+- Global vs local sea-level anomaly comparison
+- Local amplification signal (Venice minus global mean)
+- WorldTides short-term live tide forecast
 
 ---
 
-### Scenario Comparison
+### Phase 5 — Streamlit Application (Completed)
 
-- Compare:
-  - Historical regression forecasts
-  - Climate-driven forecasts
-  - SARIMAX forecasts
-  - NASA/IPCC scenario projections
+Multi-page application running via `streamlit run src/app.py`:
 
-Features:
-
-- Interactive scenario comparisons.
-- Future exceedance analysis.
-- Scenario-based visualizations.
-
----
-
-## Phase 4 — Visualization
-
-Interactive visualizations created using Plotly:
-
-- Historical Venice tide gauge data.
-- Historical regression trend and projection.
-- Climate-driven forecast with uncertainty.
-- SARIMAX forecast with uncertainty.
-- Forecast versus NASA scenario projections.
-- Global versus local sea-level comparisons.
-
-### Visualization Requirements
-
-- Clear labels and units.
-- Consistent colours and legends.
-- Hover tooltips.
-- Unified x-axis interactions.
+| Page | Content |
+|---|---|
+| Home | KPI cards, navigation cards, Venice images |
+| Historical Analysis | Linear regression, prediction interval, NASA comparison, residual plot, CSV export |
+| Climate-Driven Model | Ridge regression, hyperparameter tuning results, forecast, residuals, CSV export |
+| Comparison Dashboard | RCP scenario overlay, threshold-crossing slider and table |
+| Free Forecast | Historical linear forecast vs NASA projections, WorldTides live tide API |
+| Global vs Local | Venice vs GMSL anomaly, local amplification signal |
+| Resources | Download buttons for all datasets |
 
 ---
 
-## Phase 5 — Streamlit Application
+### Phase 6 — Documentation and Submission (Completed)
 
-### Pages
-
-- Home / Overview
-- Historical Analysis
-- Climate-Driven Model
-- Comparison Dashboard
-- Global vs Local Sea Level
-- Free Forecast
-- Resources
-
-### Features
-
-- Navigation cards using `st.page_link`.
-- Downloadable datasets.
-- NASA/IPCC projection downloads.
-- Global Streamlit theme configuration.
-
-Run locally using:
-
-```bash
-streamlit run src/app.py
-```
+- README.md completed with setup instructions, usage, and data source descriptions
+- requirements.txt updated with all dependencies
+- GitLab repository maintained with consistent commit history throughout development
+- Presentation slides prepared covering all five required topics
 
 ---
 
-## Phase 6 — Documentation & Submission
+## Timeline Summary
 
-### Documentation
-
-Complete:
-
-- `README.md`
-- Setup instructions
-- Usage instructions
-- Data source descriptions
-
-### Repository Requirements
-
-- Clean and readable Python code.
-- Source datasets.
-- Streamlit configuration.
-- Updated `requirements.txt`.
-
-### Final Deliverables
-
-- GitLab repository.
-- Presentation slides covering:
-  - Business case
-  - System architecture
-  - Implementation
-  - Results
-  - Evaluation
-  - Application screenshots
+| Phase | Status |
+|---|---|
+| Phase 1 — Setup and Data Acquisition | Done |
+| Phase 2 — Data Processing | Done |
+| Phase 3 — Model Development | Done |
+| Phase 4 — Visualization | Done |
+| Phase 5 — Streamlit Application | Done |
+| Phase 6 — Documentation and Submission | Done |
 
 ---
 
-# Expected Outcome
+## Technologies Used
 
-A fully functional Streamlit application that:
-
-- Visualizes historical relative sea level in Venice.
-- Provides a historical linear regression forecast to 2100.
-- Provides a climate-driven regression forecast using temperature and CO₂.
-- Provides a SARIMAX time-series forecast.
-- Displays prediction intervals for future projections.
-- Compares forecasts with NASA/IPCC scenario projections.
-- Highlights differences between global and local sea-level change.
-- Allows users to download datasets for transparency and further analysis.
-
----
-
-# Technologies Used
-
-- Python
-- Pandas
-- NumPy
-- Scikit-learn
-- Statsmodels
-- Plotly
-- Streamlit
-- Git / GitLab
-
----
-
-# Target Users
-
-- Government authorities
-- Urban planners
-- Civil protection agencies
-- Researchers
-- Students
-- General public
-
----
+Python, pandas, NumPy, scikit-learn, Plotly, Streamlit, openpyxl, requests, Git/GitLab

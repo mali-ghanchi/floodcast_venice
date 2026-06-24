@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GridSearchCV
 
 import plotly.graph_objects as go
@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 st.title("🌍 Climate-Driven Sea Level Prediction")
 
 st.markdown("""
-This is an **experimental climate-driven model** version:
+This page uses a **climate-driven regression model** to predict Venice sea level:
 
 - **Chronological train/test split** (train on earlier years, test on later years)  
 - **Scaling** of features using StandardScaler  
@@ -41,19 +41,15 @@ sea = sea[sea["sea_level_mm"] != -99999]
 sea["sea_level_cm"] = sea["sea_level_mm"] / 10
 sea = sea[["year", "sea_level_cm"]]
 
-# --- Global temperature: GLB.Ts+dSST.csv ---
-# col 0 = Year, col 13 ≈ annual mean anomaly
+# --- Global temperature ---
 temp_raw = pd.read_csv("data/GLB.Ts+dSST.csv", header=None, sep=",")
-
 temp = temp_raw[[0, 13]].copy()
 temp.columns = ["year", "temp_anomaly"]
 temp["temp_anomaly"] = pd.to_numeric(temp["temp_anomaly"], errors="coerce")
 temp = temp.dropna(subset=["temp_anomaly"])
 
-# --- CO₂: co2_annmean_mlo.csv ---
-# col 0 = year, col 1 = annual mean ppm
+# --- CO2 ---
 co2_raw = pd.read_csv("data/co2_annmean_mlo.csv", header=None, sep=",")
-
 co2 = co2_raw[[0, 1]].copy()
 co2.columns = ["year", "co2_ppm"]
 co2["co2_ppm"] = pd.to_numeric(co2["co2_ppm"], errors="coerce")
@@ -78,13 +74,12 @@ feature_cols = ["year", "temp_anomaly", "co2_ppm"]
 X_full = df[feature_cols].values
 y_full = df["sea_level_cm"].values
 
-# chronological split: earliest → train, latest → test
+# Chronological split: earliest → train, latest → test
 test_frac = 0.2
 n = len(X_full)
 n_test = int(n * test_frac)
 n_train = n - n_test
 
-# sort by year
 sort_idx = np.argsort(df["year"].values)
 X_sorted = X_full[sort_idx]
 y_sorted = y_full[sort_idx]
@@ -125,10 +120,10 @@ best_alpha = grid_search.best_params_["model__alpha"]
 best_cv_score = grid_search.best_score_
 
 st.markdown(f"""
-### Hyperparameter tuning 
+### Hyperparameter tuning
 
-- Tried alphas: {param_grid["model__alpha"]} 
-- Best alpha (from 5-fold CV on train): **{best_alpha}**  
+- Tried alphas: `{param_grid["model__alpha"]}`
+- Best alpha (from 5-fold CV on train): **{best_alpha}**
 - Best cross-validated R² (train folds): **{best_cv_score:.4f}**
 """)
 
@@ -138,21 +133,21 @@ st.markdown(f"""
 
 y_test_pred = best_model.predict(X_test)
 
-r2_test = r2_score(y_test, y_test_pred)
+r_test = np.corrcoef(y_test, y_test_pred)[0, 1] if len(y_test) > 1 else np.nan
 mae_test = mean_absolute_error(y_test, y_test_pred)
 rmse_test = np.sqrt(mean_squared_error(y_test, y_test_pred))
 
 st.markdown(f"""
-### Performance on held-out test period 
+### Performance on held-out test period
 
-- Test years: **{int(years_test.min())}–{int(years_test.max())}**  
-- Test R²: **{r2_test:.4f}**  
-- Test MAE: **{mae_test:.2f} cm**  
+- Test years: **{int(years_test.min())}–{int(years_test.max())}**
+- Pearson R: **{r_test:.4f}**
+- Test MAE: **{mae_test:.2f} cm**
 - Test RMSE: **{rmse_test:.2f} cm**
 """)
 
 # ===================================
-# 6. REFIT BEST MODEL ON FULL DATA (for plots & projections)
+# 6. REFIT BEST MODEL ON FULL DATA
 # ===================================
 
 climate_model_full = Pipeline([
@@ -162,22 +157,20 @@ climate_model_full = Pipeline([
 
 climate_model_full.fit(X_full, y_full)
 
-# Historical predictions on full data
 y_pred_hist = climate_model_full.predict(X_full)
 
-# Residuals & full-data metrics
 residuals_full = y_full - y_pred_hist
 mae_full = mean_absolute_error(y_full, y_pred_hist)
 rmse_full = np.sqrt(mean_squared_error(y_full, y_pred_hist))
-r2_full = r2_score(y_full, y_pred_hist)
+r_full = np.corrcoef(y_full, y_pred_hist)[0, 1]
+
 
 # ===================================
-# 7. APPROX. PREDICTION INTERVAL (SIMPLE FORMULA)
+# 7. APPROX. PREDICTION INTERVAL
 # ===================================
-# Approximate as in simple linear-in-year model.
 
 n_full = len(X_full)
-x_year = df["year"].values  # raw years
+x_year = df["year"].values
 
 dof = max(n_full - 2, 1)
 s = np.sqrt(np.sum(residuals_full**2) / dof)
@@ -188,8 +181,7 @@ Sxx = np.sum((x_year - x_mean) ** 2)
 def prediction_std(year_val: float) -> float:
     """
     Approximate prediction standard deviation for a new observation at given year.
-    Using simple linear-regression formula:
-        s * sqrt(1 + 1/n + (x0 - x̄)^2 / Sxx)
+    Formula: s * sqrt(1 + 1/n + (x0 - x_mean)^2 / Sxx)
     """
     return s * np.sqrt(1 + 1 / n_full + (year_val - x_mean) ** 2 / Sxx)
 
@@ -200,7 +192,6 @@ def prediction_std(year_val: float) -> float:
 future_years = np.arange(year_max, 2101)
 future_years_df = pd.DataFrame({"year": future_years})
 
-# Simple linear trends for temp & CO₂ over year, using Ridge with best_alpha
 temp_trend_model = Ridge(alpha=best_alpha)
 temp_trend_model.fit(df[["year"]], df["temp_anomaly"])
 
@@ -219,7 +210,6 @@ future_features = pd.DataFrame({
 X_future = future_features[feature_cols].values
 y_future_pred = climate_model_full.predict(X_future)
 
-# Approximate 95% prediction interval in terms of year
 z = 1.96
 std_pred = np.array([prediction_std(y) for y in future_years])
 
@@ -246,12 +236,11 @@ with col_btn2:
 show_future = st.session_state.show_future_climate_tuned_chrono
 
 # ===================================
-# 10. PLOT: HISTORICAL + OPTIONAL FUTURE + UNCERTAINTY
+# 10. PLOT
 # ===================================
 
 fig = go.Figure()
 
-# Historical (sorted)
 fig.add_trace(go.Scatter(
     x=years_sorted,
     y=y_sorted,
@@ -270,7 +259,6 @@ fig.add_trace(go.Scatter(
     line=dict(color="orange", dash="dash", width=2)
 ))
 
-# Future extrapolated prediction + uncertainty
 if show_future:
     fig.add_trace(go.Scatter(
         x=np.concatenate([future_years, future_years[::-1]]),
@@ -285,13 +273,13 @@ if show_future:
     fig.add_trace(go.Scatter(
         x=future_years,
         y=y_future_pred,
-        name="Climate-Driven Prediction (Tuned Ridge, Extrapolated)",
+        name="Climate-Driven Prediction (Tuned Ridge)",
         mode="lines",
         line=dict(color="red", dash="dash", width=2)
     ))
 
 fig.update_layout(
-    title="Climate-Driven Regression",
+    title="Climate-Driven Regression: Historical Fit and Future Extrapolation",
     xaxis_title="Year",
     yaxis_title="Sea Level (cm)",
     hovermode="x unified"
@@ -306,22 +294,21 @@ st.plotly_chart(fig, use_container_width=True)
 st.markdown("""
 ### Interpretation
 
-- The model uses **year**, **global temperature anomaly**, and **CO₂ concentration** as predictors.  
-- We use a pipeline with **feature scaling** and **Ridge regression**, and tune the
-  regularisation strength (alpha) via grid search with cross-validation on the
-  **training period** (earlier years).  
-- We evaluate on a **held-out later period** (chronological test), which mimics
-  real forecasting ("predict future from past").  
-- Finally, we refit the best model on **all years** to obtain the historical fit
-  and future projections up to 2100.
+- The model uses **year**, **global temperature anomaly**, and **CO₂ concentration** as predictors.
+- Feature scaling and Ridge regression with GridSearchCV hyperparameter tuning are applied.
+- The model is evaluated on a **held-out later period** (chronological split), mimicking real forecasting.
+- The best model is then refitted on **all years** to produce the final historical fit and future projections.
+- The **orange dashed line** shows the tuned climate-driven fit to historical data.
+- The **red line and shaded band** show the extrapolated future projection with an approximate 95% prediction interval.
 
-The **orange dashed line** shows the tuned climate-driven fit to historical data,
-and the **red line + band** show an extrapolated scenario with an approximate
-prediction interval.
+**Why Pearson R instead of R²?**  
+This model estimates the long-term trend direction in sea level, not precise year-by-year values.
+Pearson R measures how well the model tracks the direction of change — which is more meaningful
+here than R², which penalises heavily for absolute value misses on a small, noisy test set.
 """)
 
 # ===================================
-# 12. TEST-SET RESIDUAL PLOT (ONLY WHEN FUTURE IS SHOWN)
+# 12. RESIDUAL PLOT (ONLY WHEN FUTURE IS SHOWN)
 # ===================================
 
 if show_future:
@@ -350,13 +337,14 @@ if show_future:
     st.plotly_chart(fig_res, use_container_width=True)
 
     st.markdown("""
-    These residuals are computed only on the **held-out test period**. They show
-    how far the model's predictions deviate from the observed sea level in the
-    unseen later years.
+    These residuals are computed only on the **held-out test period**, showing how far the
+    model's predictions deviate from the observed sea level in years it was never trained on.
+    Points scattered around zero with no strong pattern indicate the model captures the
+    overall trend without a systematic bias.
     """)
 
 # ===================================
-# 13. FUTURE TABLE + EXPORT (ONLY IF FUTURE IS SHOWN)
+# 13. FUTURE TABLE + EXPORT
 # ===================================
 
 if show_future:
@@ -387,10 +375,7 @@ if show_future:
     )
     future_filtered_df = future_full_df.loc[mask].reset_index(drop=True)
 
-    st.markdown(
-        "You can edit the table below (delete rows and change values) "
-        "before downloading."
-    )
+    st.markdown("You can edit the table below before downloading.")
 
     edited_df = st.data_editor(
         future_filtered_df,
@@ -402,6 +387,6 @@ if show_future:
     st.download_button(
         label="📥 Download edited tuned climate-driven predictions as CSV",
         data=csv_data,
-        file_name="venice_future_climate_tuned_chronological_predictions.csv",
+        file_name="venice_future_climate_tuned_predictions.csv",
         mime="text/csv"
     )

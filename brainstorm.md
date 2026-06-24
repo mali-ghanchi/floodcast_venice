@@ -4,9 +4,9 @@
 
 ---
 
-# Initial Idea Generation
+## Initial Ideas Considered
 
-When first approaching this project, several application ideas were considered:
+When first approaching this project, several application ideas were shortlisted:
 
 - Spare Parts Demand Forecaster
 - Supply Chain Delay Risk Analyzer
@@ -16,209 +16,61 @@ When first approaching this project, several application ideas were considered:
 
 ---
 
-# Why Venice Sea Level Rise?
+## Why Venice Sea Level Rise?
 
-After evaluating all options, the **Venice Sea Level Rise Predictor** was selected for several reasons.
+Venice was selected because it hit every requirement cleanly:
 
-## Real-World Relevance
-
-Venice is one of the world's most flood-prone cities due to:
-
-- sea-level rise,
-- tidal flooding (*acqua alta*),
-- long-term land subsidence.
-
-The city represents an important real-world case study for understanding climate impacts on coastal communities.
+- **Real data exists and is open** — PSMSL tide gauge data going back to 1909, NASA/IPCC projections, global temperature and CO2 records, all freely available
+- **Engineering relevance** — directly applicable to civil engineering, coastal infrastructure planning, and flood risk management
+- **Clear business case** — urban planners and civil protection agencies genuinely need this kind of decision-support tool
+- **Multiple modelling approaches possible** — the data supports linear regression and multivariate regression, making it suitable for demonstrating a range of AI/ML techniques
+- **Visual impact** — sea level trends and future projections make for compelling, readable charts
 
 ---
 
-## Data Availability
+## Why the Other Ideas Were Rejected
 
-A wide range of open datasets were available and could be combined within a single application:
-
-- Venice tide gauge observations,
-- global temperature anomalies,
-- atmospheric CO₂ concentrations,
-- global mean sea-level records,
-- scenario-based sea-level projections,
-- NASA/IPCC local sea-level projections.
-
-The availability of multiple independent datasets made it possible to investigate relationships between local sea level and broader climate drivers.
+- **Stock Price Predictor** — overdone, weak engineering relevance, heavily influenced by unpredictable market events
+- **Supply Chain Analyzer** — good business case but real datasets are hard to find and clean
+- **Job Market Analyzer** — interesting but lacks connection to physical or engineering systems
 
 ---
 
-## Engineering Relevance
+## Data Sources Evaluated
 
-The topic is strongly connected to several engineering disciplines, including:
-
-- Civil engineering,
-- Coastal engineering,
-- Urban planning,
-- Flood risk management,
-- Infrastructure resilience.
-
-The project therefore provides practical relevance beyond purely academic forecasting.
-
----
-
-## Decision-Support Potential
-
-The application can provide useful information for several groups:
-
-- Urban planners,
-- Civil protection agencies,
-- Government authorities,
-- Researchers,
-- Students,
-- Interested members of the public.
-
-Interactive visualisations and future projections can support awareness and planning decisions.
+| Dataset | Source | Decision |
+|---|---|---|
+| Venice tide gauge (1909–2000) | PSMSL | Used — primary historical record |
+| RCP scenario projections | Zenodo | Used — for comparison dashboard |
+| Global temperature anomalies | NASA GISTEMP | Used — climate-driven model feature |
+| Atmospheric CO2 | Mauna Loa Observatory | Used — climate-driven model feature |
+| Global Mean Sea Level | NASA satellite altimetry | Used — Global vs Local page |
+| NASA/IPCC local projections for Venice | IPCC AR6 | Used — historical analysis comparison |
+| Synthetic datasets | — | Rejected — prohibited by brief |
 
 ---
 
-## Suitability for Modelling
+## Technology Decisions
 
-The problem supports several complementary modelling approaches:
-
-- Historical linear regression,
-- Climate-driven multivariate regression,
-- SARIMAX time-series forecasting,
-- Comparison against externally published scenario projections.
-
-This allows different modelling techniques to be evaluated and compared within the same application.
-
----
-
-# Rejected Ideas and Reasons
-
-## Stock Price Trend Predictor
-
-- Very common project topic.
-- Limited engineering relevance.
-- Strong influence of unpredictable market behaviour.
+| Tool | Role | Why chosen |
+|---|---|---|
+| Python | Core language | Required by brief |
+| pandas + NumPy | Data cleaning, merging, numerical operations | Standard, already familiar |
+| scikit-learn | Linear regression, Ridge, GridSearchCV, metrics | Best-in-class for ML in Python |
+| Plotly | Interactive charts | Hover tooltips, zoom, legend toggles — far better than matplotlib for a web app |
+| Streamlit | Web application framework | Fastest path from Python script to working web app; no frontend knowledge required |
+| openpyxl | Reading Excel files | Required for pandas to handle .xlsx datasets |
+| requests | WorldTides API calls | Standard HTTP library for live API integration |
+| Git / GitLab | Version control | Required by brief |
 
 ---
 
-## Supply Chain Delay Risk Analyzer
+## Key Design Decisions Made During Development
 
-- Interesting real-world application.
-- Difficult to obtain suitable open datasets.
-- Greater complexity within the available project timeframe.
-
----
-
-## Job Market Analyzer
-
-- Less closely related to physical systems.
-- Reduced opportunity for environmental or engineering modelling.
-
----
-
-The Venice sea-level project offered the best balance between:
-
-- real-world importance,
-- open data availability,
-- technical complexity,
-- engineering relevance,
-- visual impact.
-
----
-
-# Data Sources Considered
-
-| Data Source | Purpose |
-|------------|----------|
-| Venice tide gauge data | Historical relative sea level |
-| Global temperature anomalies | Large-scale warming signal |
-| Atmospheric CO₂ | Long-term climate forcing indicator |
-| Global Mean Sea Level | Global comparison benchmark |
-| Scenario-based Venice projections | Future comparison scenarios |
-| NASA/IPCC local projections | Physically informed local projections |
-
----
-
-# Technology Decisions
-
-The following technologies were selected for the project.
-
-## Python
-
-Primary programming language used throughout the application.
-
-## pandas and NumPy
-
-Used for:
-
-- data cleaning,
-- transformation,
-- merging,
-- numerical analysis.
-
-## scikit-learn
-
-Used for:
-
-- regression models,
-- feature scaling,
-- model evaluation,
-- hyperparameter tuning.
-
-## statsmodels
-
-Used for:
-
-- SARIMAX time-series forecasting.
-
-## Plotly
-
-Used to create:
-
-- interactive visualisations,
-- time-series plots,
-- comparison dashboards.
-
-## Streamlit
-
-Used to develop the multi-page web application.
-
-## openpyxl
-
-Used to:
-
-- read Excel-based scenario and projection datasets.
-
-## `.streamlit/config.toml`
-
-Used to provide:
-
-- application-wide visual styling,
-- consistent theme settings.
-
----
-
-# Technology Selection Rationale
-
-These tools were chosen to ensure that the project remained:
-
-- technically coherent,
-- practical to implement,
-- suitable for machine learning and time-series analysis,
-- capable of producing interactive visualisations,
-- appropriate for a decision-support dashboard.
-
----
-
-# Final Decision
-
-The **FloodCast Venice** project was selected because it combines:
-
-- environmental relevance,
-- engineering applications,
-- machine learning techniques,
-- time-series forecasting,
-- multiple real-world datasets,
-- interactive visualisation.
-
-The result is a technically challenging and socially relevant application capable of supporting understanding of future sea-level rise in Venice.
-
----
+- **Switched from matplotlib to Plotly** — matplotlib produces static images; Plotly gives proper interactivity in the browser
+- **Chose Streamlit over NiceGUI** — NiceGUI requires more boilerplate; Streamlit is Python-native and much faster to iterate with
+- **Kept RCP data for comparison only, not training** — RCP values are projections, not real measurements; using them as training data would mean learning from someone else's model, not real observations
+- **Used full dataset for deployed forecasts, separate split model for evaluation** — maximises training data for the actual predictions users see, while still providing an honest held-out test result
+- **Chronological split for evaluation** — more honest than random splitting for a forecasting task, since it truly simulates predicting the future from the past
+- **Added uncertainty bands** — after testing revealed non-stationarity (the 1989-1991 dip), a single confident prediction line would have been misleading; the widening band honestly communicates growing uncertainty at longer horizons
+- **Integrated WorldTides API for short-term forecast** — provides a live real-world tide reading for Venice, adding a real-time data dimension alongside the long-term model projections

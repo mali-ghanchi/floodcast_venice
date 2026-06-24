@@ -4,278 +4,117 @@
 
 ---
 
-# Purpose
+## Purpose
 
-This document demonstrates that the **FloodCast Venice – Water You Thinking?** project satisfies the requirements of the Application Programming (AP) examination specification.
-
-The project combines real-world datasets, data processing, machine learning, time-series forecasting, and interactive visualisation within a Python-based web application.
+This document verifies that FloodCast Venice meets all requirements in the AP Examination Requirements by Prof. Dr.-Ing. Tobias Miunske.
 
 ---
 
-# 1. Definition of the Application and Business Idea
+## 1. Definition of the Application and Business Idea
 
-## Application Overview
+**Application:** FloodCast Venice — a multi-page Streamlit web dashboard for analysing and forecasting relative sea level rise in Venice.
 
-**FloodCast Venice** is a multi-page Streamlit web application designed to analyse historical and future relative sea-level change in Venice.
+**Problem solved:** Urban planners and civil protection agencies lack a simple, accessible tool to visualise when Venice's flooding thresholds will be crossed under different climate scenarios. Existing tools are either too technical or too expensive for smaller municipalities.
 
-The application enables users to:
+**Business model:**
+- Free tier (general public, tourists, researchers): historical data viewer, basic trend graph
+- Premium tier (government authorities, urban planners, civil protection agencies): full scenario comparison, RCP overlays, threshold-crossing tool, data export, future projections
+- Revenue via B2G (Business to Government) annual SaaS licensing
+- Scalable beyond Venice — same architecture redeployable for any coastal city with PSMSL tide gauge data
 
-- explore historical sea-level behaviour,
-- investigate relationships with climate variables,
-- generate statistical forecasts,
-- compare forecasts against published climate scenarios,
-- visualise uncertainty in future projections.
-
----
-
-## Problem Addressed
-
-Venice is highly vulnerable to:
-
-- sea-level rise,
-- tidal flooding,
-- coastal hazards,
-- land subsidence.
-
-The application helps users understand:
-
-- how relative sea level has changed historically,
-- how it may evolve in the future,
-- how local changes compare with global trends,
-- how different forecasting methods produce different outcomes.
+**Technical functionality:** Users interact with an interactive dashboard, select flooding thresholds via sliders, compare multiple forecast models and climate scenarios, and download datasets for further analysis.
 
 ---
 
-## Decision-Support Value
+## 2. Data Foundation
 
-The application supports:
+All datasets are real, open-source, and from established scientific institutions. No synthetic data was used at any stage.
 
-- awareness of long-term flood risk,
-- comparison between statistical forecasts and published projections,
-- interpretation of local amplification effects in Venice,
-- communication of uncertainty through prediction intervals.
+| Dataset | Source | Used for |
+|---|---|---|
+| Venice tide gauge (1909–2000) | PSMSL | Primary historical record; all model training |
+| Global temperature anomalies | NASA GISTEMP | Climate-driven regression feature |
+| Atmospheric CO2 | Mauna Loa Observatory | Climate-driven regression feature |
+| Global Mean Sea Level | NASA satellite altimetry | Global vs Local comparison page |
+| RCP scenario projections | Zenodo (peer-reviewed) | Comparison dashboard |
+| NASA/IPCC local projections for Venice | IPCC AR6 | Historical analysis comparison |
 
----
-
-## Target Users
-
-The intended users include:
-
-- Government authorities,
-- Urban planners,
-- Civil protection agencies,
-- Researchers,
-- Students,
-- Tourists,
-- Members of the general public.
+All datasets were processed from raw form — no pre-cleaned or synthetic versions were used.
 
 ---
 
-# 2. Data Foundation
+## 3. Data Processing and AI Implementation
 
-The project uses real-world datasets obtained from established scientific and monitoring organisations.
+### Data preprocessing steps implemented
+- Removal of missing values (-99999 notation) from tide gauge data
+- Unit conversion: sea level from millimetres to centimetres
+- Numeric type conversion and invalid entry removal for climate datasets
+- Inner-join merging of Venice, temperature, and CO2 datasets by year
+- Reshaping of NASA/IPCC Excel projection data from wide to long format
+- Conversion of NASA projections from metres to centimetres
+- Alignment of NASA projections to Venice tide gauge baseline at year 2020
 
-## Historical Venice Tide Gauge Data
+### Models implemented
 
-Used as the primary record of relative sea level in Venice.
+**Historical linear regression (scikit-learn LinearRegression)**
+- Feature: `year`
+- Chronological 80/20 train/test split for evaluation
+- Metrics: Pearson R, MAE, RMSE on held-out test period
+- 95% prediction interval derived analytically: `s * sqrt(1 + 1/n + (x0 - x_mean)^2 / Sxx)`
+- Extrapolated to 2100 and compared against NASA/IPCC local projections
 
----
+**Climate-driven regression (scikit-learn Ridge + Pipeline + GridSearchCV)**
+- Features: `year`, `temp_anomaly`, `co2_ppm`
+- Feature scaling via StandardScaler
+- Hyperparameter tuning: alpha tested across [0.01, 0.1, 1.0, 10.0, 100.0] using 5-fold cross-validation on the training set
+- Chronological 80/20 split for evaluation
+- Metrics: R², MAE, RMSE on held-out test period
+- Approximate prediction interval from residual variance using matrix form
+- Future temperature and CO2 extrapolated linearly, then fed into climate model to 2100
 
-## Global Temperature Anomaly Data
-
-Used as a climate-related explanatory variable.
-
----
-
-## Atmospheric CO₂ Data
-
-Used as a long-term climate forcing indicator.
-
----
-
-## Global Mean Sea Level Data
-
-Used to compare local Venice changes with global sea-level behaviour.
-
----
-
-## Scenario-Based Projection Data
-
-Used to compare model outputs against externally published future scenarios.
-
----
-
-## NASA/IPCC Local Sea-Level Projections
-
-Used as an additional benchmark representing physically informed local projections for Venice.
+### AI methods correctly applied and understood
+- Model selection justified: linear and Ridge regression appropriate for long-term trend forecasting on environmental time series data
+- Limitations identified and documented: non-stationarity detected via chronological testing; widening uncertainty bands added as a direct response
+- Hyperparameter tuning performed and confirmed empirically to have minimal impact on the simple model (single feature, no multicollinearity to regularize), but a genuine candidate for the climate model (three correlated features)
+- Residual analysis performed for both models to check for systematic patterns
 
 ---
 
-## Use of Real Data
+## 4. Digital Implementation and Deployment
 
-- No synthetic training data were used.
-- All models were trained using historical observations.
-- Extrapolated values are only used for future forecasting purposes.
+**Framework:** Streamlit multi-page web application
 
----
+**Visualization:** Plotly interactive charts with hover tooltips, unified x-axis, and legend toggles
 
-# 3. Data Processing and AI Implementation
+**Application pages:**
 
-## Data Preparation
+| Page | Key features |
+|---|---|
+| Home | KPI cards, navigation cards, Venice images |
+| Historical Analysis | Linear regression, NASA comparison, residual plot, CSV export |
+| Climate-Driven Model | Ridge regression, tuning results, forecast, residuals, CSV export |
+| Comparison Dashboard | RCP scenario overlay, threshold-crossing slider and table |
+| Free Forecast | Linear forecast vs NASA projections, WorldTides live API |
+| Global vs Local | Venice vs GMSL anomaly, local amplification signal |
+| Resources | Download buttons for all six datasets |
 
-The following preprocessing steps were implemented:
+**Live API integration:** WorldTides API used on the Free Forecast page to display short-term actual tide heights for Venice — demonstrating real-time data integration alongside long-term model projections.
 
-- removal of missing values,
-- conversion of sea level from millimetres to centimetres,
-- numeric type conversion,
-- dataset merging by year,
-- reshaping of Excel-based projection data,
-- conversion from metres to centimetres,
-- alignment of published projections to a Venice baseline.
+**Deployment:** Runs locally via `streamlit run src/app.py`
 
----
-
-## Implemented Models
-
-### Historical Linear Regression
-
-- Predictor:
-  - `year`
-
-- Target:
-  - `sea_level_cm`
-
-- Outputs:
-  - fitted historical trend,
-  - future extrapolation,
-  - approximate 95% prediction interval.
+**Executability:** Application is fully executable and demonstrable on request
 
 ---
 
-### Climate-Driven Regression
+## 5. GitLab and Presentation Slides
 
-Predictors:
-
-- `year`
-- `temp_anomaly`
-- `co2_ppm`
-
-Method:
-
-- feature scaling,
-- Ridge regression,
-- hyperparameter tuning using GridSearchCV.
-
-Outputs:
-
-- future sea-level estimates,
-- model evaluation statistics,
-- uncertainty estimates.
+- Repository hosted in Prof. Miunske's GitLab organization from the start of development
+- Regular commits throughout all development phases with descriptive commit messages
+- Documentation files committed alongside code: README.md, brainstorm.md, plan.md, alignment.md
+- Presentation: 5 required slides covering Business Case, Architecture and Methodology, Technical Implementation, Results and Evaluation, Goal Achievement
 
 ---
 
-### SARIMAX Forecast
+## Summary
 
-- Annual Venice sea-level observations used as a univariate time series.
-- Forecasts generated to January 2100.
-- Chronological train/test evaluation performed.
-
-Evaluation metrics:
-
-- MAE,
-- RMSE,
-- Pearson correlation coefficient.
-
----
-
-## Model Evaluation
-
-The following metrics were used:
-
-- Mean Absolute Error (MAE),
-- Root Mean Squared Error (RMSE),
-- Pearson correlation coefficient (R),
-- residual analysis,
-- prediction intervals.
-
----
-
-## Scenario Comparison
-
-Forecasts generated by the application are visually compared against:
-
-- scenario-based projections,
-- NASA/IPCC local sea-level projections.
-
-This demonstrates the practical application of regression and time-series methods within a real-world decision-support application.
-
----
-
-# 4. Digital Implementation and Deployment
-
-The system was implemented as a multi-page Streamlit web application.
-
-## Application Pages
-
-- Home / Overview
-- Historical Analysis
-- Climate-Driven Model
-- Comparison Dashboard
-- Global vs Local Sea Level
-- Free Forecast
-- Resources
-
----
-
-## Application Features
-
-- Interactive Plotly visualisations.
-- Download functionality for selected datasets.
-- Scenario comparison tools.
-- Forecast uncertainty visualisation.
-- Multi-page navigation.
-
----
-
-## Local Execution
-
-The application can be executed locally using:
-
-```bash
-streamlit run src/app.py
-```
-
----
-
-# 5. Relevance to Course Requirements
-
-The project satisfies the Application Programming course requirements because it includes:
-
-- a clearly defined software application,
-- a real-world engineering problem,
-- multiple scientific datasets,
-- data cleaning and preprocessing,
-- machine learning techniques,
-- time-series forecasting,
-- model evaluation,
-- interactive visualisation,
-- a usable web-based interface.
-
----
-
-# Conclusion
-
-The **FloodCast Venice – Water You Thinking?** project demonstrates the complete development cycle of a modern data-driven application.
-
-The project integrates:
-
-- software development,
-- data engineering,
-- machine learning,
-- statistical modelling,
-- time-series forecasting,
-- interactive visualisation.
-
-As a result, it satisfies both the technical and practical requirements of the Application Programming examination while addressing an important real-world environmental problem.
-
----
+All four mandatory project components are fully addressed. The project uses exclusively real data, applies correctly implemented and evaluated AI/ML methods, delivers a working multi-page Python web application with live API integration, and is fully version-controlled and documented on GitLab.
