@@ -5,9 +5,7 @@ import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-# -----------------------------------
-# PAGE CONFIG
-# -----------------------------------
+
 st.title("📈 Historical Analysis")
 
 st.markdown("""
@@ -15,9 +13,7 @@ This page analyses historical tide gauge measurements in Venice
 and applies linear regression to estimate future sea level trends.
 """)
 
-# -----------------------------------
-# LOAD DATA
-# -----------------------------------
+#loading and cleaning
 graph = pd.read_csv(
     "data/venice data - historical.txt",
     sep=";",
@@ -31,17 +27,15 @@ graph.columns = [
     "quality"
 ]
 
-# Remove missing values
+# cleaning
 graph = graph[graph["sea_level_mm"] != -99999].copy()
 
-# Convert mm → cm
+# Converting mm to cm
 graph["sea_level_cm"] = graph["sea_level_mm"] / 10
 graph["year"] = graph["year"].astype(int)
 graph = graph.sort_values("year")
 
-# -----------------------------------
-# MACHINE LEARNING MODEL
-# -----------------------------------
+#ML model
 X = graph[["year"]].values
 y = graph["sea_level_cm"].values
 
@@ -51,9 +45,7 @@ model.fit(X, y)
 # Historical trend (fitted values)
 hist_trend = model.predict(X)
 
-# -----------------------------------
-# MODEL METRICS (CHRONOLOGICAL TRAIN/TEST SPLIT)
-# -----------------------------------
+#split train test 80-20
 n_obs = len(graph)
 n_test = max(5, int(0.2 * n_obs))
 
@@ -79,9 +71,7 @@ st.markdown(f"""
 - RMSE (Root Mean Squared Error): **{rmse_simple:.2f} cm**
 """)
 
-# -----------------------------------
-# STATISTICAL UNCERTAINTY (PREDICTION INTERVAL)
-# -----------------------------------
+#uncertainty
 residuals_full = y - hist_trend
 n = len(X)
 x = X.flatten()
@@ -95,9 +85,7 @@ Sxx = np.sum((x - x_mean) ** 2)
 def prediction_std(x0: float) -> float:
     return s * np.sqrt(1 + 1 / n + (x0 - x_mean) ** 2 / Sxx)
 
-# -----------------------------------
-# FUTURE PREDICTION
-# -----------------------------------
+#future
 future_years = np.arange(
     graph["year"].max(),
     2101
@@ -113,10 +101,8 @@ std_pred = np.array([prediction_std(year) for year in future_years_flat])
 upper_bound = predicted_levels.flatten() + z * std_pred
 lower_bound = predicted_levels.flatten() - z * std_pred
 
-# -----------------------------------
-# LOAD NASA DATA
-# -----------------------------------
-@st.cache_data
+
+@st.cache_data #nasa data 
 def load_nasa_data():
     file_path = "data/ipcc_ar6_sea_level_projection_psmsl_id_39.xlsx"
 
@@ -176,15 +162,11 @@ else:
 nasa_long["nasa_cm"] = venice_2020_cm + nasa_long["nasa_projection_m"] * 100
 nasa_long = nasa_long[nasa_long["year"] <= 2100].copy()
 
-# -----------------------------------
-# SESSION STATE
-# -----------------------------------
+
 if "show_future" not in st.session_state:
     st.session_state.show_future = False
 
-# -----------------------------------
-# BUTTONS
-# -----------------------------------
+
 col1, col2 = st.columns(2)
 
 with col1:
@@ -197,12 +179,10 @@ with col2:
 
 show_future = st.session_state.show_future
 
-# -----------------------------------
-# CREATE PLOTLY FIGURE
-# -----------------------------------
-fig = go.Figure()
 
-# Always show historical data
+fig = go.Figure() #PLOTLY!!!
+
+
 fig.add_trace(
     go.Scatter(
         x=graph["year"],
@@ -212,10 +192,6 @@ fig.add_trace(
         line=dict(color="steelblue")
     )
 )
-
-# -----------------------------------
-# SHOW FUTURE ELEMENTS ONLY AFTER BUTTON CLICK
-# -----------------------------------
 if show_future:
     fig.add_trace(
         go.Scatter(
@@ -259,9 +235,7 @@ if show_future:
         )
     )
 
-# -----------------------------------
-# LAYOUT SETTINGS
-# -----------------------------------
+
 fig.update_layout(
     title="Venice Sea Level Analysis (Historical + Linear Projection + NASA)",
     xaxis_title="Year",
@@ -269,17 +243,12 @@ fig.update_layout(
     hovermode="x unified"
 )
 
-# -----------------------------------
-# DISPLAY GRAPH
-# -----------------------------------
+
 st.plotly_chart(
     fig,
     use_container_width=True
 )
 
-# -----------------------------------
-# INTERPRETATION (HISTORICAL)
-# -----------------------------------
 st.markdown("""
 ### Historical Interpretation
 
@@ -298,11 +267,7 @@ or both.
 Over the historical record, the data show a clear upward trend in relative
 sea level in Venice. This long-term rise increases the background likelihood of
 flooding, especially during high-tide events such as *Acqua Alta*.
-""")
-
-# -----------------------------------
-# INTERPRETATION (FUTURE)
-# -----------------------------------
+""") #interpretation of past
 if show_future:
     st.markdown(f"""
     ### Future Projection
@@ -316,11 +281,9 @@ if show_future:
     The **NASA {scenario} median** curve is plotted for comparison. NASA's projection is
     scenario-based and physically informed, while the regression model is a purely statistical
     extrapolation of Venice's historical trend.
-    """)
+    """) #interpretation of future
 
-    # -----------------------------------
-    # TEST-SET RESIDUAL PLOT
-    # -----------------------------------
+   
     st.markdown("### Residual analysis (test set only)")
 
     test_residuals = y_test - y_test_pred
@@ -345,9 +308,6 @@ if show_future:
 
     st.plotly_chart(fig_res, use_container_width=True)
 
-    # -----------------------------------
-    # FUTURE TABLE + EXPORT
-    # -----------------------------------
     st.markdown("### Future prediction data")
 
     nasa_interp = np.interp(

@@ -5,12 +5,10 @@ import plotly.graph_objects as go
 import requests
 
 
-# -------------------------------------------------
-# 4. SHORT-TERM FORECAST FROM WORLDTIDES API
-# -------------------------------------------------
+
 st.markdown("### Short-term tide forecast for Venice")
 
-@st.cache_data
+@st.cache_data #api and what not
 def fetch_venice_tides_worldtides(days: int = 3) -> pd.DataFrame:
     """
     Call the WorldTides API and return a DataFrame with datetime and water_level_cm
@@ -73,7 +71,7 @@ try:
 The forecast shows **short-term, high-frequency tide levels**
 for the next few days, while the SARIMA model above focuses on the
 **long-term monthly trend up to around year 2100**.
-""")
+""") #info
 
 except Exception as e:
     st.error(f"Error while calling WorldTides: {e}")

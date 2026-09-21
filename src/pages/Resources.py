@@ -1,13 +1,11 @@
-# -----------------------------
-# RESOURCES: DATA DOWNLOADS
-# -----------------------------
+
 import streamlit as st
 import pandas as pd
 
 st.markdown("---")
 st.markdown("## 📁 Resources – Download the data")
 
-# Load datasets
+#loading datasets
 venice_res = pd.read_csv('data/venice data - historical.txt', sep=';', header=None)
 venice_res.columns = ['year', 'sea_level_mm', 'flag', 'quality']
 venice_res = venice_res[venice_res['sea_level_mm'] != -99999]
@@ -30,14 +28,13 @@ gmsl_res = pd.read_csv(
 )
 gmsl_res.columns = ['year_decimal', 'gmsl_cm', 'gmsl_cm_smooth']
 
-# corrected filename here
 rcp_res = pd.read_excel('data/venice_sea_level comparison.xlsx')
 
-# Load NASA Excel file as raw bytes for download
+
 with open('data/ipcc_ar6_sea_level_projection_psmsl_id_39.xlsx', 'rb') as f:
     nasa_excel_bytes = f.read()
 
-# 2 columns layout for buttons
+
 col_r1, col_r2 = st.columns(2)
 
 with col_r1:

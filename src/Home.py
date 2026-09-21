@@ -1,16 +1,11 @@
 import streamlit as st
 
-# -------------------------
-# PAGE CONFIG
-# -------------------------
 st.set_page_config(
     page_title="FloodCast Venice - Water you thinking? 💦",
     layout="wide"
 )
+#just the usual homepage with tons of info about venice and why it is important
 
-# -------------------------
-# TITLE + INTRO
-# -------------------------
 st.title("FloodCast Venice - Water you thinking? 💦")
 
 st.subheader("About the city")
@@ -28,10 +23,8 @@ government authorities, and civil protection agencies in
 understanding long-term flood risks and infrastructure challenges. Furthermore, it could also be used by tourists, should they choose to travel.
 """)
 
-# -------------------------
-# KPI CARDS (OVERVIEW)
-# -------------------------
-st.markdown("### Key figures at a glance")
+
+st.markdown("### Key figures at a glance") #venice KPI
 
 kcol1, kcol2, kcol3, kcol4 = st.columns(4)
 
@@ -47,13 +40,10 @@ with kcol3:
 with kcol4:
     st.metric(label="Flood Risk Assessment", value="High")
 
-# -------------------------
-# NAVIGATION SECTION
-# -------------------------
+
 st.markdown("---")
 st.header("📊 Explore the analysis")
 
-# First row: 3 cards
 row1_col1, row1_col2, row1_col3 = st.columns(3)
 
 with row1_col1:
@@ -93,7 +83,6 @@ with row1_col3:
         icon="⚖️"
     )
 
-# Second row: 3 cards
 row2_col1, row2_col2, row2_col3 = st.columns(3)
 
 with row2_col1:
@@ -132,9 +121,7 @@ with row2_col3:
         icon="📁"
     )
 
-# -------------------------
-# GLIMPSE + IMAGES SECTION
-# -------------------------
+
 st.markdown("---")
 
 st.markdown("### A glimpse into a sinking city")

@@ -3,9 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 
-# -----------------------------------
-# PAGE CONFIG
-# -----------------------------------
+
 st.title("🌊 Global vs Local Sea Level — Venice vs Global Mean")
 
 st.markdown("""
@@ -18,9 +16,7 @@ with **local relative sea level in Venice** from the tide gauge.
   includes **land subsidence** and local/regional ocean dynamics.
 """)
 
-# ===================================
-# 1. LOAD LOCAL (VENICE) SEA LEVEL
-# ===================================
+#data loading 
 
 sea = pd.read_csv('data/venice data - historical.txt', sep=';', header=None)
 sea.columns = ['year', 'sea_level_mm', 'flag', 'quality']
@@ -28,12 +24,7 @@ sea = sea[sea['sea_level_mm'] != -99999]
 sea['sea_level_cm'] = sea['sea_level_mm'] / 10
 sea = sea[['year', 'sea_level_cm']]
 
-# ===================================
-# 2. LOAD GLOBAL MEAN SEA LEVEL (NASA)
-# ===================================
 
-# NASA_SSH_GMSL_INDICATOR.txt: high-frequency GMSL (approx. 10-day/weekly)
-# We skip header lines starting with "HDR" (comment='H') and split on whitespace.
 gmsl_raw = pd.read_csv(
     'data/NASA_SSH_GMSL_INDICATOR.txt',
     sep=r"\s+",
@@ -42,13 +33,12 @@ gmsl_raw = pd.read_csv(
     header=None
 )
 
-# col 0 = decimal year (e.g. 1993.01), col 1 = GMSL (cm), col 2 = smoothed GMSL (cm)
 gmsl_raw.columns = ['year_decimal', 'gmsl_cm', 'gmsl_cm_smooth']
 
-# Extract calendar year (integer)
+# extracting calendar year
 gmsl_raw['year'] = gmsl_raw['year_decimal'].astype(int)
 
-# Annual mean of smoothed GMSL (cm)
+# Annual mean of smoothed GMSL 
 gmsl_annual = (
     gmsl_raw
     .groupby('year', as_index=False)[['gmsl_cm_smooth']]
@@ -56,11 +46,8 @@ gmsl_annual = (
     .rename(columns={'gmsl_cm_smooth': 'gmsl_cm'})
 )
 
-# ===================================
-# 3. MERGE GLOBAL & LOCAL (OVERLAP PERIOD)
-# ===================================
 
-df_merged = sea.merge(gmsl_annual, on='year', how='inner')
+df_merged = sea.merge(gmsl_annual, on='year', how='inner')#merge
 
 if df_merged.empty:
     st.error("No overlapping years between Venice tide gauge and NASA GMSL dataset.")
@@ -71,11 +58,8 @@ year_max = int(df_merged['year'].max())
 
 st.markdown(f"**Overlap period:** {year_min}–{year_max}")
 
-# ===================================
-# 4. CREATE ANOMALIES (RELATIVE TO 1993)
-# ===================================
 
-# Choose a reference year for anomalies (1993 is natural for GMSL)
+# Choose a reference year for anomalies (1993)
 ref_year = 1993
 if ref_year not in df_merged['year'].values:
     # If 1993 not present in overlap, fall back to first overlap year
@@ -86,16 +70,13 @@ row_ref = df_merged[df_merged['year'] == ref_year].iloc[0]
 # Local Venice anomaly (cm above ref_year level)
 df_merged['venice_anom_cm'] = df_merged['sea_level_cm'] - row_ref['sea_level_cm']
 
-# Global anomaly (NASA is around 1993 mean, we re-center exactly to ref_year)
+# Global anomaly (NASA is around 1993 mean, we recenter exactly to ref_year)
 df_merged['gmsl_anom_cm'] = df_merged['gmsl_cm'] - row_ref['gmsl_cm']
 
 # Difference: local minus global (approx. subsidence + regional effects)
 df_merged['local_minus_global_cm'] = df_merged['venice_anom_cm'] - df_merged['gmsl_anom_cm']
 
-# ===================================
-# 5. PLOT: GLOBAL vs LOCAL ANOMALIES
-# ===================================
-
+#plotting
 fig = go.Figure()
 
 fig.add_trace(go.Scatter(
@@ -123,10 +104,6 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 
-# ===================================
-# 6. PLOT: LOCAL MINUS GLOBAL (SUBSIDENCE SIGNAL)
-# ===================================
-
 fig2 = go.Figure()
 
 fig2.add_trace(go.Scatter(
@@ -146,9 +123,6 @@ fig2.update_layout(
 
 st.plotly_chart(fig2, use_container_width=True)
 
-# ===================================
-# 7. INTERPRETATION
-# ===================================
 
 st.markdown(f"""
 ### Interpretation
@@ -182,4 +156,4 @@ For planners and civil protection, this comparison emphasizes that:
 - but **local subsidence** and regional processes are crucial for assessing the
   true **flood risk in Venice**, and cannot be ignored when designing defenses,
   infrastructure upgrades, or evacuation strategies.
-""")
+""") #info

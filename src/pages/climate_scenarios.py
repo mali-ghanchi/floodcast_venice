@@ -10,9 +10,6 @@ from sklearn.model_selection import GridSearchCV
 
 import plotly.graph_objects as go
 
-# -----------------------------------
-# PAGE CONFIG
-# -----------------------------------
 st.title("🌍 Climate-Driven Sea Level Prediction")
 
 st.markdown("""
@@ -30,53 +27,45 @@ This page uses a **climate-driven regression model** to predict Venice sea level
   - editable export table.
 """)
 
-# ===================================
-# 1. LOAD DATA
-# ===================================
 
-# --- Venice tide gauge ---
+# Venice tide gauge and cleaning data
 sea = pd.read_csv("data/venice data - historical.txt", sep=";", header=None)
 sea.columns = ["year", "sea_level_mm", "flag", "quality"]
-sea = sea[sea["sea_level_mm"] != -99999]
+sea = sea[sea["sea_level_mm"] != -99999] 
 sea["sea_level_cm"] = sea["sea_level_mm"] / 10
 sea = sea[["year", "sea_level_cm"]]
 
-# --- Global temperature ---
+# Global temperature and cleaning data
 temp_raw = pd.read_csv("data/GLB.Ts+dSST.csv", header=None, sep=",")
 temp = temp_raw[[0, 13]].copy()
-temp.columns = ["year", "temp_anomaly"]
+temp.columns = ["year", "temp_anomaly"] 
 temp["temp_anomaly"] = pd.to_numeric(temp["temp_anomaly"], errors="coerce")
 temp = temp.dropna(subset=["temp_anomaly"])
 
-# --- CO2 ---
+# CO2 and cleaning data
 co2_raw = pd.read_csv("data/co2_annmean_mlo.csv", header=None, sep=",")
 co2 = co2_raw[[0, 1]].copy()
 co2.columns = ["year", "co2_ppm"]
 co2["co2_ppm"] = pd.to_numeric(co2["co2_ppm"], errors="coerce")
 co2 = co2.dropna(subset=["co2_ppm"])
 
-# ===================================
-# 2. MERGE DATASETS
-# ===================================
 
 df = sea.merge(temp, on="year", how="inner")
-df = df.merge(co2, on="year", how="inner")
+df = df.merge(co2, on="year", how="inner") #merging
 
 year_min = int(df["year"].min())
 year_max = int(df["year"].max())
 st.markdown(f"**Merged dataset years:** {year_min}–{year_max}  ·  **Samples:** {len(df)}")
 
-# ===================================
-# 3. FEATURES, TARGET, CHRONOLOGICAL TRAIN/TEST SPLIT
-# ===================================
+
 
 feature_cols = ["year", "temp_anomaly", "co2_ppm"]
-X_full = df[feature_cols].values
+X_full = df[feature_cols].values #data training here
 y_full = df["sea_level_cm"].values
 
-# Chronological split: earliest → train, latest → test
+
 test_frac = 0.2
-n = len(X_full)
+n = len(X_full) #split training 80-20
 n_test = int(n * test_frac)
 n_train = n - n_test
 
@@ -92,9 +81,6 @@ years_test = years_sorted[n_train:]
 st.markdown(f"Train size: **{len(X_train)}**  ·  Test size: **{len(X_test)}**")
 st.markdown(f"Test years: **{int(years_test.min())}–{int(years_test.max())}**")
 
-# ===================================
-# 4. PIPELINE: SCALING + RIDGE + GRID SEARCH
-# ===================================
 
 pipeline = Pipeline([
     ("scaler", StandardScaler()),
@@ -127,9 +113,7 @@ st.markdown(f"""
 - Best cross-validated R² (train folds): **{best_cv_score:.4f}**
 """)
 
-# ===================================
-# 5. EVALUATE ON HELD-OUT TEST PERIOD
-# ===================================
+
 
 y_test_pred = best_model.predict(X_test)
 
@@ -141,17 +125,14 @@ st.markdown(f"""
 ### Performance on held-out test period
 
 - Test years: **{int(years_test.min())}–{int(years_test.max())}**
-- Pearson R: **{r_test:.4f}**
+- Pearson R: **{r_test:.4f}** # checking validity of shown graph
 - Test MAE: **{mae_test:.2f} cm**
 - Test RMSE: **{rmse_test:.2f} cm**
 """)
 
-# ===================================
-# 6. REFIT BEST MODEL ON FULL DATA
-# ===================================
 
 climate_model_full = Pipeline([
-    ("scaler", StandardScaler()),
+    ("scaler", StandardScaler()), 
     ("model", Ridge(alpha=best_alpha))
 ])
 
@@ -164,10 +145,6 @@ mae_full = mean_absolute_error(y_full, y_pred_hist)
 rmse_full = np.sqrt(mean_squared_error(y_full, y_pred_hist))
 r_full = np.corrcoef(y_full, y_pred_hist)[0, 1]
 
-
-# ===================================
-# 7. APPROX. PREDICTION INTERVAL
-# ===================================
 
 n_full = len(X_full)
 x_year = df["year"].values
@@ -185,11 +162,8 @@ def prediction_std(year_val: float) -> float:
     """
     return s * np.sqrt(1 + 1 / n_full + (year_val - x_mean) ** 2 / Sxx)
 
-# ===================================
-# 8. FUTURE EXTRAPOLATION TO 2100
-# ===================================
 
-future_years = np.arange(year_max, 2101)
+future_years = np.arange(year_max, 2101) #future prediction till 2100
 future_years_df = pd.DataFrame({"year": future_years})
 
 temp_trend_model = Ridge(alpha=best_alpha)
@@ -216,12 +190,10 @@ std_pred = np.array([prediction_std(y) for y in future_years])
 upper_bound = y_future_pred + z * std_pred
 lower_bound = y_future_pred - z * std_pred
 
-# ===================================
-# 9. SESSION STATE (BUTTONS)
-# ===================================
+
 
 if "show_future_climate_tuned_chrono" not in st.session_state:
-    st.session_state.show_future_climate_tuned_chrono = False
+    st.session_state.show_future_climate_tuned_chrono = False #using buttons to check future, looks cleaning that way
 
 col_btn1, col_btn2 = st.columns(2)
 
@@ -235,14 +207,10 @@ with col_btn2:
 
 show_future = st.session_state.show_future_climate_tuned_chrono
 
-# ===================================
-# 10. PLOT
-# ===================================
-
 fig = go.Figure()
 
 fig.add_trace(go.Scatter(
-    x=years_sorted,
+    x=years_sorted, #ploting
     y=y_sorted,
     name="Venice Sea Level (Observed)",
     mode="lines",
@@ -287,9 +255,7 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 
-# ===================================
-# 11. INTERPRETATION
-# ===================================
+
 
 st.markdown("""
 ### Interpretation
@@ -305,13 +271,11 @@ st.markdown("""
 This model estimates the long-term trend direction in sea level, not precise year-by-year values.
 Pearson R measures how well the model tracks the direction of change — which is more meaningful
 here than R², which penalises heavily for absolute value misses on a small, noisy test set.
-""")
+""") #explaining the graph here
 
-# ===================================
-# 12. RESIDUAL PLOT (ONLY WHEN FUTURE IS SHOWN)
-# ===================================
 
-if show_future:
+
+if show_future: #carrying out residual analysis
     st.markdown("### Residual analysis (test set only)")
 
     test_residuals = y_test - y_test_pred
@@ -341,13 +305,11 @@ if show_future:
     model's predictions deviate from the observed sea level in years it was never trained on.
     Points scattered around zero with no strong pattern indicate the model captures the
     overall trend without a systematic bias.
-    """)
+    """) #more explanation
 
-# ===================================
-# 13. FUTURE TABLE + EXPORT
-# ===================================
 
-if show_future:
+
+if show_future: #table for exporting data and what not
 
     st.markdown("### Future prediction data")
 
